@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extracción de Manifiestos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <div class="header-text">
+                    <h1>📄 Extracción de Manifiestos</h1>
+                    <p>Procesa archivos PDF de manifiestos y extrae datos automáticamente</p>
+                </div>
+                <a class="operaciones-btn" href="/operacionesmanifiestos" title="Ver Operaciones">
+                    📊 Operaciones
+                </a>
+                <button class="delete-all-btn" onclick="confirmDeleteAll()" title="Eliminar Todo">
+                    🗑️ Eliminar Todo
+                </button>
+            </div>
+        </div>
+
+        <!-- Sección de carpetas existentes -->
+        <div class="folders-section" id="foldersSection">
+            <h3>📂 Carpetas de Manifiestos Disponibles</h3>
+            <p>Selecciona una carpeta para procesar sus PDFs</p>
+            <div class="folders-grid" id="foldersGrid">
+                <div class="loading-folders">Cargando carpetas...</div>
+            </div>
+        </div>
+
+        <div class="divider">
+            <hr>
+            <span>O</span>
+            <hr>
+        </div>
+
+        <div class="upload-section" id="uploadSection">
+            <h3>📁 Subir Nueva Carpeta con PDFs</h3>
+            <p>Arrastra y suelta una carpeta o haz clic para seleccionar</p>
+            
+            <div class="file-input-wrapper">
+                <input type="file" id="folderInput" class="file-input" webkitdirectory multiple>
+                <label for="folderInput" class="file-input-label">
+                    📂 Seleccionar Carpeta
+                </label>
+            </div>
+
+            <div id="fileCount" class="file-count">
+                Total de archivos seleccionados: <span>0</span> PDFs
+            </div>
+            
+            <div class="selected-files" id="selectedFiles"></div>
+            <style>
+                .selected-files {
+                    display: none;
+                }
+            </style>
+            <button class="process-btn" id="processBtn" disabled>
+                🔄 Procesar PDFs
+            </button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Procesando archivos PDF...</p>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <h3>📊 Resultados del Procesamiento</h3>
+            <div class="tables-container">
+                <div class="table-wrapper" id="manifiestosWrapper">
+                    <h4>📋 Manifiestos</h4>
+                    <div class="table-container" id="manifiestosTable"></div>
+                </div>
+                <div class="table-wrapper" id="facturasWrapper">
+                    <h4>🧾 Facturas Electrónicas</h4>
+                    <div class="table-container" id="facturasTable"></div>
+                </div>
+            </div>
+            <div id="resultsContent"></div>
+        </div>
+    </div>
+
+    <!-- Modal para renombrado de archivos -->
+    <div id="renameModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📝 Renombrar Archivos PDF</h3>
+                <span class="close" onclick="closeRenameModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="folder-info">
+                    <h4 id="modalFolderName">Carpeta: </h4>
+                    <p>Configura cómo quieres renombrar los archivos PDF de esta carpeta</p>
+                </div>
+                
+                <div class="fields-section">
+                    <h4>📋 Campos Disponibles</h4>
+                    <p>Arrastra los campos que quieres incluir en el nombre de los archivos:</p>
+                    <div class="available-fields" id="availableFields">
+                        <!-- Los campos disponibles aparecerán aquí -->
+                    </div>
+                </div>
+                
+                <div class="selected-fields-section" id="selectedFieldsSection" style="display: none;">
+                    <h4>📝 Orden de Campos - Arrastra para Reordenar</h4>
+                    <p>Los campos aparecerán en este orden en el nombre del archivo:</p>
+                    <div class="selected-fields-container" id="selectedFieldsContainer">
+                        <!-- Los campos seleccionados aparecerán aquí -->
+                    </div>
+                </div>
+                
+                <div class="custom-text-section">
+                    <h4>✏️ Texto Personalizado</h4>
+                    <p>Agrega texto personalizado que se incluirá en el nombre:</p>
+                    <div class="custom-text-wrapper">
+                        <input type="text" id="customText" class="custom-text-input" 
+                               placeholder="Ej: PROYECTO_2025, URGENTE, etc." 
+                               maxlength="50">
+                        <button id="addCustomText" class="btn-add-custom">+ Agregar</button>
+                        <div class="custom-text-info">
+                            <span class="char-count" id="charCount">0/50</span>
+                            <small>El texto personalizado aparecerá como un campo arrastrable</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="preview-section">
+                    <h4>👁️ Vista Previa del Nombre</h4>
+                    <div class="preview-container">
+                        <div class="preview-name" id="previewName">archivo.pdf</div>
+                        <div class="preview-info">
+                            <small>Separador: <span id="separatorDisplay">_</span></small>
+                            <button id="changeSeparator" class="btn-separator">Cambiar Separador</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeRenameModal()">Cancelar</button>
+                <button class="btn-confirm" onclick="confirmRename()" id="confirmRenameBtn" disabled>
+                    📝 Renombrar Archivos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

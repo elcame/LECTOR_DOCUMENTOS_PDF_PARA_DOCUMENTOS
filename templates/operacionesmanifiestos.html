@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operaciones de Manifiestos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <div class="header-text">
+                    <h1>📊 Operaciones de Manifiestos</h1>
+                    <p>Agregados mensuales por placa y buscador por Load ID</p>
+                </div>
+                <a class="close-app-btn" href="/" title="Volver">
+                    ⬅️ Volver
+                </a>
+            </div>
+        </div>
+
+        <div class="upload-section" style="margin-top: 16px;">
+            <h3>🔎 Buscar por Load ID</h3>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input id="searchInput" type="text" class="custom-field-input" placeholder="Ej: 4665176" style="flex:1;" />
+                <button id="searchBtn" class="process-btn">Buscar</button>
+                <button id="clearBtn" class="btn-cancel">Limpiar</button>
+            </div>
+        </div>
+
+        <div class="results-section" id="resultsSection" style="display: block;">
+            <h3>📈 Navegación por Mes y Placa</h3>
+            
+            <!-- Navegación por Mes -->
+            <div class="month-navigation">
+                <button id="prevMonthBtn" class="nav-btn" disabled>⬅️</button>
+                <div class="month-display">
+                    <h4 id="currentMonth">Cargando...</h4>
+                    <span id="monthStats">0 placas</span>
+                </div>
+                <button id="nextMonthBtn" class="nav-btn" disabled>➡️</button>
+            </div>
+
+            <!-- Placas del Mes Actual -->
+            <div class="plates-container" id="platesContainer">
+                <div class="loading-plates">Cargando placas...</div>
+            </div>
+
+            <h3 style="margin-top:24px;">🔍 Coincidencias por Load ID</h3>
+            <div class="tables-container">
+                <div class="table-wrapper" id="matchesWrapper">
+                    <h4>🔎 Resultados de Búsqueda</h4>
+                    <div class="table-container" id="matchesTable"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Detalles de Viajes -->
+        <div id="tripsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Detalles de Viajes</h3>
+                    <span class="close" onclick="closeTripsModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-summary" id="modalSummary"></div>
+                    <div class="table-container" id="modalTable"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Variables globales
+    let allData = null;
+    let monthsData = {};
+    let currentMonthIndex = 0;
+    let monthsList = [];
+
+    async function fetchData(query = '') {
+        const url = query ? `/api/operacionesmanifiestos?q=${encodeURIComponent(query)}&all_data=true` : '/api/operacionesmanifiestos?all_data=true';
+        const res = await fetch(url);
+        const json = await res.json();
+        if (!json.success) {
+            throw new Error(json.error || 'Error al cargar datos');
+        }
+        return json.data;
+    }
+
+    // Función helper para convertir strings de Python a JSON válido
+    function convertPythonStringToArray(pythonString) {
+        try {
+            console.log('Convirtiendo string de Python:', pythonString.substring(0, 100) + '...');
+            
+            // El string parece ser una representación de array Python, necesitamos limpiarlo
+            let cleanString = pythonString.trim();
+            
+            // Reemplazar comillas simples por comillas dobles para JSON válido
+            cleanString = cleanString.replace(/'/g, '"');
+            
+            // Reemplazar valores booleanos de Python
+            cleanString = cleanString.replace(/True/g, 'true');
+            cleanString = cleanString.replace(/False/g, 'false');
+            cleanString = cleanString.replace(/None/g, 'null');
+            
+            console.log('String limpio:', cleanString.substring(0, 100) + '...');
+            
+            const result = JSON.parse(cleanString);
+            console.log('Conversión exitosa:', result.length, 'elementos');
+            return result;
+        } catch (e) {
+            console.error('Error al convertir string de Python:', e);
+            console.error('String original:', pythonString.substring(0, 200) + '...');
+            
+            // Intentar una conversión más agresiva
+            try {
+                console.log('Intentando conversión alternativa...');
+                let altString = pythonString.trim();
+                
+                // Reemplazar comillas simples por comillas dobles
+                altString = altString.replace(/'/g, '"');
+                
+                // Reemplazar valores booleanos
+                altString = altString.replace(/True/g, 'true');
+                altString = altString.replace(/False/g, 'false');
+                altString = altString.replace(/None/g, 'null');
+                
+                // Usar eval como último recurso (solo para datos confiables)
+                const result = eval('(' + altString + ')');
+                console.log('Conversión alternativa exitosa:', result.length, 'elementos');
+                return result;
+            } catch (e2) {
+                console.error('Error en conversión alternativa:', e2);
+                return null;
+            }
+        }
+    }
+
+    function organizeDataByMonth(aggregates) {
+        console.log('organizeDataByMonth recibió:', typeof aggregates, aggregates);
+        
+        // Si aggregates es string, intentar convertirlo a array
+        if (typeof aggregates === 'string') {
+            aggregates = convertPythonStringToArray(aggregates);
+            if (!aggregates) {
+                monthsData = {};
+                monthsList = [];
+                return;
+            }
+            console.log('Aggregates convertido de string a array:', aggregates.length, 'elementos');
+        }
+        
+        // Verificar que aggregates sea un array
+        if (!aggregates || !Array.isArray(aggregates) || aggregates.length === 0) {
+            console.error('No hay datos agregados válidos para organizar:', aggregates);
+            monthsData = {};
+            monthsList = [];
+            return;
+        }
+        
+        monthsData = {};
+        monthsList = [];
+        
+        aggregates.forEach(item => {
+            const month = item.mes;
+            if (!monthsData[month]) {
+                monthsData[month] = [];
+                monthsList.push(month);
+            }
+            monthsData[month].push(item);
+        });
+        
+        // Ordenar meses
+        monthsList.sort();
+        console.log('Meses organizados:', monthsList);
+        console.log('Datos por mes:', monthsData);
+    }
+
+    function updateMonthNavigation() {
+        const currentMonthElement = document.getElementById('currentMonth');
+        const monthStatsElement = document.getElementById('monthStats');
+        const prevBtn = document.getElementById('prevMonthBtn');
+        const nextBtn = document.getElementById('nextMonthBtn');
+        
+        if (monthsList.length === 0) {
+            currentMonthElement.textContent = 'Sin datos';
+            monthStatsElement.textContent = '0 placas';
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            return;
+        }
+        
+        const currentMonth = monthsList[currentMonthIndex];
+        const platesInMonth = monthsData[currentMonth] || [];
+        
+        currentMonthElement.textContent = currentMonth;
+        monthStatsElement.textContent = `${platesInMonth.length} placas`;
+        
+        prevBtn.disabled = currentMonthIndex === 0;
+        nextBtn.disabled = currentMonthIndex === monthsList.length - 1;
+        
+        renderPlatesForCurrentMonth();
+    }
+
+    function renderPlatesForCurrentMonth() {
+        const container = document.getElementById('platesContainer');
+        if (!container) return;
+        
+        if (monthsList.length === 0) {
+            container.innerHTML = '<div class="loading-plates">No hay datos disponibles</div>';
+            return;
+        }
+        
+        const currentMonth = monthsList[currentMonthIndex];
+        const platesInMonth = monthsData[currentMonth] || [];
+        
+        if (platesInMonth.length === 0) {
+            container.innerHTML = '<div class="loading-plates">No hay placas para este mes</div>';
+            return;
+        }
+        
+        let html = '';
+        platesInMonth.forEach(plate => {
+            html += `
+                <div class="plate-card" onclick="showPlateDetails('${currentMonth}', '${plate.placa}')">
+                    <div class="plate-header">
+                        <div class="plate-name">${plate.placa}</div>
+                        <div class="plate-icon">🚛</div>
+                    </div>
+                    <div class="plate-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">Viajes</div>
+                            <div class="stat-value">${plate.cantidad}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Total</div>
+                            <div class="stat-value amount">$${Number(plate.total_ganancia || 0).toLocaleString('es-CO')}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+
+    function showPlateDetails(month, plate) {
+        console.log(`Mostrando detalles para ${plate} en ${month}`);
+        
+        // Verificar que allData esté disponible
+        if (!allData || allData.length === 0) {
+            alert('No hay datos disponibles para mostrar detalles');
+            return;
+        }
+        
+        // Si allData es string, intentar convertirlo a array
+        if (typeof allData === 'string') {
+            allData = convertPythonStringToArray(allData);
+            if (!allData) {
+                alert('Error al procesar los datos');
+                return;
+            }
+            console.log('All data convertido de string a array:', allData.length, 'elementos');
+        }
+        
+        // Buscar todos los viajes de esta placa en este mes
+        const trips = allData.filter(trip => 
+            trip.mes === month && trip.placa === plate
+        );
+        
+        if (trips.length === 0) {
+            alert('No se encontraron viajes para esta placa en este mes');
+            return;
+        }
+        
+        // Calcular estadísticas
+        const totalTrips = trips.length;
+        const totalAmount = trips.reduce((sum, trip) => sum + (Number(trip.valormanifiesto) || 0), 0);
+        const avgAmount = totalAmount / totalTrips;
+        
+        // Mostrar modal
+        const modal = document.getElementById('tripsModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalSummary = document.getElementById('modalSummary');
+        const modalTable = document.getElementById('modalTable');
+        
+        modalTitle.textContent = `Viajes de ${plate} - ${month}`;
+        
+        modalSummary.innerHTML = `
+            <h4>Resumen de Viajes</h4>
+            <div class="summary-stats">
+                <div class="summary-stat">
+                    <div class="label">Total Viajes</div>
+                    <div class="value">${totalTrips}</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="label">Total Ganancia</div>
+                    <div class="value amount">$${totalAmount.toLocaleString('es-CO')}</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="label">Promedio por Viaje</div>
+                    <div class="value amount">$${avgAmount.toLocaleString('es-CO')}</div>
+                </div>
+            </div>
+        `;
+        
+         // Crear tabla de detalles simplificada con campos esenciales
+         let tableHtml = '<table class="dynamic-table"><thead><tr>' +
+             '<th style="width: 60px;">PDF</th><th style="width: 100px;">Load ID</th><th style="width: 120px;">Fecha Inicio</th><th style="width: 150px;">Destino</th><th style="width: 120px;">Valor</th>' +
+             '</tr></thead><tbody>';
+         
+         trips.forEach(trip => {
+             // Debug: mostrar las claves disponibles en el objeto trip
+             console.log('Campos disponibles en trip:', Object.keys(trip));
+             console.log('Trip completo:', trip);
+             
+             // Manejar diferentes nombres de campos
+             const loadId = trip.load_id || trip.ID || trip['load_id'] || '';
+             const fechaInicio = trip['fecha inicio'] || trip['FECHA VIAJE'] || trip.fecha_inicio || '';
+             const destino = trip.destino || '';
+             const valor = trip.valormanifiesto || trip['VALOR FLETE'] || 0;
+             const archivo = trip.archivo || trip['ARCHIVO PDF'] || trip.filename || '';
+             
+             tableHtml += `
+                 <tr>
+                     <td>
+                         <button class="btn-action view-btn" onclick="openPDF('${archivo}')" title="Ver PDF">
+                             👁️
+                         </button>
+                     </td>
+                     <td>${loadId}</td>
+                     <td>${fechaInicio}</td>
+                     <td title="${destino}">${destino}</td>
+                     <td style="text-align: right; font-weight: 600; color: #28a745;">$${Number(valor || 0).toLocaleString('es-CO')}</td>
+                 </tr>
+             `;
+         });
+        
+        tableHtml += '</tbody></table>';
+        modalTable.innerHTML = tableHtml;
+        
+        modal.style.display = 'block';
+    }
+
+    function closeTripsModal() {
+        const modal = document.getElementById('tripsModal');
+        modal.style.display = 'none';
+    }
+
+    // Función para abrir PDF
+    function openPDF(filepath) {
+        if (filepath && filepath !== 'N/A' && filepath !== '') {
+            // Si es una ruta completa, extraer solo el nombre del archivo
+            const filename = filepath.includes('/') ? filepath.split('/').pop() : filepath;
+            const filename2 = filename.includes('\\') ? filename.split('\\').pop() : filename;
+            window.open(`/open_pdf/${filename2}`, '_blank');
+        } else {
+            alert('No hay archivo PDF disponible');
+        }
+    }
+
+    // Función para buscar PDF por Load ID
+    function searchPDFByLoadId(loadId) {
+        if (!loadId || loadId === 'N/A' || loadId === '') {
+            alert('No hay Load ID disponible para buscar el PDF');
+            return;
+        }
+        
+        // Buscar PDF en todas las carpetas de MANIFIESTOS
+        window.open(`/search_pdf/${encodeURIComponent(loadId)}`, '_blank');
+    }
+
+    function renderMatches(rows) {
+        const container = document.getElementById('matchesTable');
+        console.log('Renderizando coincidencias:', rows);
+        console.log('Contenedor encontrado:', !!container);
+        
+        if (!container) {
+            console.error('Contenedor matchesTable no encontrado');
+            return;
+        }
+        
+        if (!rows || rows.length === 0) {
+            container.innerHTML = '<div class="table-empty">Sin coincidencias encontradas</div>';
+            return;
+        }
+        
+        let html = '<table class="dynamic-table"><thead><tr>' +
+            '<th style="width: 120px;">Load ID</th><th style="width: 100px;">Placa</th><th style="width: 100px;">Mes</th><th style="width: 120px;">Valor</th><th style="width: 150px;">Conductor</th><th style="width: 120px;">Destino</th><th style="width: 120px;">Fecha Inicio</th>' +
+            '</tr></thead><tbody>';
+        
+        for (const r of rows) {
+            // Manejar diferentes nombres de campos
+            const loadId = r.load_id || r.ID || '';
+            const fechaInicio = r.fecha_inicio || r['fecha inicio'] || r['FECHA VIAJE'] || '';
+            const valor = r.valormanifiesto || r['VALOR FLETE'] || 0;
+            
+            html += `<tr>
+                <td>${loadId}</td>
+                <td>${r.placa ?? ''}</td>
+                <td>${r.mes ?? ''}</td>
+                <td style="text-align: right; font-weight: 600; color: #28a745;">$${Number(valor || 0).toLocaleString('es-CO')}</td>
+                <td title="${r.conductor || ''}">${r.conductor ?? ''}</td>
+                <td title="${r.destino || ''}">${r.destino ?? ''}</td>
+                <td>${fechaInicio}</td>
+            </tr>`;
+        }
+        html += '</tbody></table>';
+        
+        container.innerHTML = html;
+        console.log('Tabla de coincidencias renderizada con', rows.length, 'filas');
+    }
+
+    function renderAllData(rows) {
+        const container = document.getElementById('allDataTable');
+        console.log('Renderizando todos los datos:', rows);
+        console.log('Contenedor encontrado:', !!container);
+        
+        if (!container) {
+            console.error('Contenedor allDataTable no encontrado');
+            return;
+        }
+        
+        if (!rows || rows.length === 0) {
+            container.innerHTML = '<div class="table-empty">No hay datos disponibles</div>';
+            return;
+        }
+        
+        // Obtener las columnas del primer registro
+        const firstRow = rows[0];
+        const columns = Object.keys(firstRow);
+        
+        let html = '<table class="dynamic-table"><thead><tr>';
+        
+        // Crear encabezados dinámicamente
+        columns.forEach(col => {
+            const width = col === 'valormanifiesto' ? '120px' : 
+                         col === 'conductor' || col === 'empresa' || col === 'destino' ? '150px' :
+                         col === 'fecha Generacion' || col === 'fecha Vencimiento' || col === 'fecha pago' ? '120px' :
+                         col === 'load_id' || col === 'kof' || col === 'remesa' ? '100px' :
+                         col === 'placa' || col === 'mes' ? '80px' : '100px';
+            html += `<th style="width: ${width};">${col.toUpperCase()}</th>`;
+        });
+        
+        html += '</tr></thead><tbody>';
+        
+        // Crear filas de datos
+        rows.forEach((row, index) => {
+            html += '<tr>';
+            columns.forEach(col => {
+                let value = row[col] || '';
+                let cellStyle = '';
+                
+                if (col === 'valormanifiesto') {
+                    value = value ? `$${Number(value).toLocaleString('es-CO')}` : '';
+                    cellStyle = 'text-align: right; font-weight: 600; color: #28a745;';
+                } else if (col === 'conductor' || col === 'empresa' || col === 'destino') {
+                    cellStyle = `title="${value}"`;
+                }
+                
+                html += `<td ${cellStyle}>${value}</td>`;
+            });
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table>';
+        
+        container.innerHTML = html;
+        console.log('Tabla completa renderizada con', rows.length, 'filas y', columns.length, 'columnas');
+    }
+
+    async function loadInitial() {
+        console.log('Iniciando carga de datos...');
+        try {
+            const data = await fetchData();
+            console.log('Datos recibidos:', data);
+            console.log('Tipo de data:', typeof data);
+            console.log('Keys en data:', Object.keys(data));
+            console.log('Agregados:', data.aggregates?.length || 0);
+            console.log('Tipo de aggregates:', typeof data.aggregates);
+            console.log('Coincidencias:', data.matches?.length || 0);
+            console.log('All data:', data.all_data?.length || 0);
+            
+            // Verificar que tenemos datos agregados
+            if (!data.aggregates) {
+                throw new Error('No se encontraron datos agregados en la respuesta');
+            }
+            
+            // Si aggregates es string, intentar convertirlo a array
+            if (typeof data.aggregates === 'string') {
+                console.log('Convirtiendo aggregates de string a array...');
+                data.aggregates = convertPythonStringToArray(data.aggregates);
+                if (!data.aggregates) {
+                    throw new Error('No se pudo convertir aggregates de string a array');
+                }
+            }
+            
+            if (!Array.isArray(data.aggregates)) {
+                console.error('aggregates no es un array después de la conversión:', typeof data.aggregates, data.aggregates);
+                throw new Error('Los datos agregados no tienen el formato esperado');
+            }
+            
+            if (data.aggregates.length === 0) {
+                throw new Error('No se encontraron datos agregados');
+            }
+            
+            // Organizar datos por mes
+            organizeDataByMonth(data.aggregates);
+            
+            // Guardar todos los datos para los detalles
+            allData = data.all_data || [];
+            
+            // Si allData es string, intentar convertirlo a array
+            if (typeof allData === 'string') {
+                allData = convertPythonStringToArray(allData);
+                if (!allData) {
+                    console.error('No se pudo convertir allData de string en loadInitial');
+                    allData = [];
+                } else {
+                    console.log('All data convertido de string a array en loadInitial:', allData.length, 'elementos');
+                }
+            }
+            
+            console.log('All data guardado:', allData.length, 'registros');
+            
+            // Inicializar navegación
+            currentMonthIndex = 0;
+            updateMonthNavigation();
+            
+            // Renderizar coincidencias
+            renderMatches(data.matches);
+            
+            console.log('Datos cargados exitosamente');
+        } catch (e) {
+            console.error('Error al cargar datos:', e);
+            const platesContainer = document.getElementById('platesContainer');
+            const matchesContainer = document.getElementById('matchesTable');
+            
+            if (platesContainer) {
+                platesContainer.innerHTML = `<div class="loading-plates">Error al cargar datos: ${e.message}</div>`;
+            }
+            if (matchesContainer) {
+                matchesContainer.innerHTML = `<div class="table-empty">Error al cargar datos: ${e.message}</div>`;
+            }
+        }
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        // Cargar datos iniciales
+        loadInitial();
+        
+        // Configurar event listeners con validaciones
+        const prevBtn = document.getElementById('prevMonthBtn');
+        const nextBtn = document.getElementById('nextMonthBtn');
+        const searchBtn = document.getElementById('searchBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (currentMonthIndex > 0) {
+                    currentMonthIndex--;
+                    updateMonthNavigation();
+                }
+            });
+        } else {
+            console.error('Botón prevMonthBtn no encontrado');
+        }
+        
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (currentMonthIndex < monthsList.length - 1) {
+                    currentMonthIndex++;
+                    updateMonthNavigation();
+                }
+            });
+        } else {
+            console.error('Botón nextMonthBtn no encontrado');
+        }
+        
+        if (searchBtn) {
+            searchBtn.addEventListener('click', async () => {
+                const q = document.getElementById('searchInput').value.trim();
+                try {
+                    const data = await fetchData(q);
+                    renderMatches(data.matches);
+                } catch (error) {
+                    console.error('Error en búsqueda:', error);
+                }
+            });
+        } else {
+            console.error('Botón searchBtn no encontrado');
+        }
+        
+        if (clearBtn) {
+            clearBtn.addEventListener('click', async () => {
+                document.getElementById('searchInput').value = '';
+                try {
+                    const data = await fetchData('');
+                    renderMatches(data.matches);
+                } catch (error) {
+                    console.error('Error al limpiar:', error);
+                }
+            });
+        } else {
+            console.error('Botón clearBtn no encontrado');
+        }
+        
+        // Cerrar modal al hacer click fuera de él
+        window.addEventListener('click', (event) => {
+            const modal = document.getElementById('tripsModal');
+            if (event.target === modal) {
+                closeTripsModal();
+            }
+        });
+    });
+
+    // Agregar estilos para el botón PDF
+    function addPDFButtonStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .btn-action {
+                background: none;
+                border: none;
+                padding: 8px 12px;
+                margin: 0 2px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 16px;
+                transition: all 0.2s ease;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 36px;
+                height: 36px;
+            }
+            
+            .view-btn {
+                background: linear-gradient(45deg, #17a2b8, #138496);
+                color: white;
+                box-shadow: 0 2px 4px rgba(23, 162, 184, 0.3);
+            }
+            
+            .view-btn:hover {
+                background: linear-gradient(45deg, #138496, #0f6674);
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(23, 162, 184, 0.4);
+            }
+            
+            .view-btn:active {
+                transform: translateY(0);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Inicializar estilos cuando se carga la página
+    document.addEventListener('DOMContentLoaded', () => {
+        addPDFButtonStyles();
+    });
+    </script>
+</body>
+</html>
+
+
