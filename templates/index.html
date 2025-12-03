@@ -81,6 +81,18 @@
                     <div class="table-container" id="facturasTable"></div>
                 </div>
             </div>
+            <div id="duplicadosSection" style="display: none;">
+                <div class="duplicados-wrapper">
+                    <h4>⚠️ Archivos Duplicados Encontrados</h4>
+                    <p class="duplicados-info">Los siguientes archivos tienen la misma información (load_id o remesa) que archivos ya procesados:</p>
+                    <div class="table-container" id="duplicadosTable"></div>
+                    <div class="duplicados-actions">
+                        <button class="btn-select-all" onclick="selectAllDuplicados()">✓ Seleccionar Todos</button>
+                        <button class="btn-deselect-all" onclick="deselectAllDuplicados()">✗ Deseleccionar Todos</button>
+                        <button class="btn-delete-selected" onclick="eliminarDuplicadosSeleccionados()">🗑️ Eliminar Seleccionados</button>
+                    </div>
+                </div>
+            </div>
             <div id="resultsContent"></div>
         </div>
     </div>

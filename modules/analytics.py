@@ -82,7 +82,7 @@ def load_all_manifiestos_from_excel(include_debug: bool = False) -> Tuple[List[D
     excel_files = [
         os.path.join(excel_folder, f)
         for f in os.listdir(excel_folder)
-        if f.lower().endswith('.xlsx') and f != 'DATOS TOTALES.xlsx'
+        if f.lower().endswith('.xlsx') and f != 'DATOS TOTALES.xlsx' and f.startswith('manifiestos_')
     ]
 
     debug['files_found'] = [os.path.basename(p) for p in excel_files]
@@ -168,6 +168,10 @@ def aggregate_monthly_by_placa(
         if col not in df.columns:
             df[col] = None if col != 'valormanifiesto' else 0
 
+    # Agregar conductor si no existe
+    if 'conductor' not in df.columns:
+        df['conductor'] = None
+
     # Asegurar tipo numérico para valormanifiesto
     df['valormanifiesto'] = pd.to_numeric(df['valormanifiesto'], errors='coerce').fillna(0)
 
@@ -176,10 +180,30 @@ def aggregate_monthly_by_placa(
         df['mes'] = df['mes'].astype(str).str.upper().str.strip()
     if 'placa' in df.columns:
         df['placa'] = df['placa'].astype(str).str.upper().str.strip()
+    if 'conductor' in df.columns:
+        df['conductor'] = df['conductor'].astype(str).str.strip()
 
+    # Filtrar registros con mes vacío o inválido antes de agrupar
+    df_filtered = df[
+        (df['mes'].notna()) & 
+        (df['mes'] != '') & 
+        (df['mes'] != 'NO_ENCONTRADO') &
+        (df['placa'].notna()) & 
+        (df['placa'] != '') &
+        (df['placa'] != 'NO ENCONTRADA')
+    ]
+    
+    if df_filtered.empty:
+        return []
+    
+    # Agrupar por mes, placa y conductor (tomar el primer conductor para cada placa)
     grouped = (
-        df.groupby(['mes', 'placa'], dropna=False)
-          .agg(total_ganancia=('valormanifiesto', 'sum'), cantidad=('placa', 'count'))
+        df_filtered.groupby(['mes', 'placa'])
+          .agg(
+              total_ganancia=('valormanifiesto', 'sum'), 
+              cantidad=('placa', 'count'),
+              conductor=('conductor', 'first')
+          )
           .reset_index()
     )
 
@@ -226,6 +250,7 @@ def build_operaciones_payload(query: Optional[str] = None, debug: bool = False, 
     - aggregates: agregación por mes y placa
     - matches: resultados de búsqueda por load_id (opcional)
     - all_data: todos los registros del Excel (opcional)
+    - gastos_totales: resumen de gastos totales (opcional)
     """
     manifiestos, diag = load_all_manifiestos_from_excel(include_debug=debug)
     aggregates = aggregate_monthly_by_placa(manifiestos)
@@ -239,6 +264,40 @@ def build_operaciones_payload(query: Optional[str] = None, debug: bool = False, 
     
     if include_all_data:
         payload['all_data'] = manifiestos
+        
+        # Calcular gastos totales si se incluyen todos los datos
+        try:
+            from modules.payment_manager import calcular_gastos_totales
+            # Obtener el nombre de la carpeta más reciente
+            carpeta_reciente = None
+            if diag.get('files_found'):
+                # Extraer nombre de carpeta del primer archivo
+                primer_archivo = diag['files_found'][0]
+                if primer_archivo.startswith('manifiestos_'):
+                    carpeta_reciente = primer_archivo.replace('manifiestos_', '').replace('.xlsx', '')
+            
+            # Si no se encontró carpeta, intentar obtenerla de otra manera
+            if not carpeta_reciente:
+                import os
+                manifiestos_path = os.path.join(os.getcwd(), 'MANIFIESTOS')
+                if os.path.exists(manifiestos_path):
+                    carpetas = [f for f in os.listdir(manifiestos_path) if os.path.isdir(os.path.join(manifiestos_path, f))]
+                    if carpetas:
+                        carpeta_reciente = carpetas[-1]  # Última carpeta
+            
+            print(f"[DEBUG] Carpeta detectada para gastos: {carpeta_reciente}")
+            gastos = calcular_gastos_totales(carpeta_reciente)
+            payload['gastos_totales'] = gastos
+        except Exception as e:
+            print(f"[WARNING] No se pudieron calcular gastos totales: {e}")
+            payload['gastos_totales'] = {
+                'total_gastos': 0,
+                'gastos_conductores': 0,
+                'gastos_parqueaderos': 0,
+                'gastos_repuestos': 0,
+                'gastos_mano_obra': 0,
+                'total_viajes': 0
+            }
     
     if debug:
         payload['debug'] = diag

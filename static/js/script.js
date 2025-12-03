@@ -375,6 +375,9 @@ function displayResults(data) {
     manifiestosTable.innerHTML = manifiestosHtml;
     facturasTable.innerHTML = facturasHtml;
 
+    // Mostrar archivos duplicados si existen
+    displayDuplicados(data.archivos_duplicados || []);
+
     // Botones de descarga en el contenedor principal
     resultsContent.innerHTML = successHtml + `
         <div style="margin-top: 30px; text-align: center;">
@@ -382,6 +385,148 @@ function displayResults(data) {
             <button class="download-btn" onclick="abrirExcel()" style="background: linear-gradient(45deg, #28a745, #20c997);">📂 Abrir Excel</button>
         </div>
     `;
+}
+
+// Mostrar archivos duplicados
+function displayDuplicados(archivosDuplicados) {
+    const duplicadosSection = document.getElementById('duplicadosSection');
+    const duplicadosTable = document.getElementById('duplicadosTable');
+    
+    if (!duplicadosSection || !duplicadosTable) {
+        console.error('Elementos de duplicados no encontrados');
+        return;
+    }
+    
+    if (!archivosDuplicados || archivosDuplicados.length === 0) {
+        duplicadosSection.style.display = 'none';
+        return;
+    }
+    
+    duplicadosSection.style.display = 'block';
+    
+    let duplicadosHtml = `
+        <table class="dynamic-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllDuplicados(this.checked)">
+                    </th>
+                    <th style="width: 60px;">ID</th>
+                    <th style="width: 250px;">ARCHIVO</th>
+                    <th style="width: 150px;">IDENTIFICADOR</th>
+                    <th style="width: 120px;">LOAD ID</th>
+                    <th style="width: 120px;">REMESA (KBQ)</th>
+                    <th style="width: 200px;">ARCHIVO ORIGINAL</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    archivosDuplicados.forEach((dup, index) => {
+        duplicadosHtml += `
+            <tr>
+                <td>
+                    <input type="checkbox" class="duplicado-checkbox" data-archivo='${JSON.stringify(dup)}'>
+                </td>
+                <td>${index + 1}</td>
+                <td class="archivo-duplicado">${dup.archivo || 'N/A'}</td>
+                <td>${dup.identificador || 'N/A'}</td>
+                <td>${dup.load_id || 'N/A'}</td>
+                <td>${dup.remesa || 'N/A'}</td>
+                <td class="archivo-original">${dup.archivo_original || 'N/A'}</td>
+            </tr>
+        `;
+    });
+    
+    duplicadosHtml += `
+            </tbody>
+        </table>
+    `;
+    
+    duplicadosTable.innerHTML = duplicadosHtml;
+}
+
+// Seleccionar todos los duplicados
+function selectAllDuplicados() {
+    const checkboxes = document.querySelectorAll('.duplicado-checkbox');
+    checkboxes.forEach(cb => cb.checked = true);
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) selectAllCheckbox.checked = true;
+}
+
+// Deseleccionar todos los duplicados
+function deseleccionarTodosDuplicados() {
+    const checkboxes = document.querySelectorAll('.duplicado-checkbox');
+    checkboxes.forEach(cb => cb.checked = false);
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+}
+
+// Función corregida para deseleccionar
+function deselectAllDuplicados() {
+    deseleccionarTodosDuplicados();
+}
+
+// Toggle todos los duplicados
+function toggleAllDuplicados(checked) {
+    const checkboxes = document.querySelectorAll('.duplicado-checkbox');
+    checkboxes.forEach(cb => cb.checked = checked);
+}
+
+// Eliminar duplicados seleccionados
+async function eliminarDuplicadosSeleccionados() {
+    const checkboxes = document.querySelectorAll('.duplicado-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        showMessage('Por favor selecciona al menos un archivo duplicado para eliminar', 'error');
+        return;
+    }
+    
+    const archivosAEliminar = Array.from(checkboxes).map(cb => {
+        return JSON.parse(cb.getAttribute('data-archivo'));
+    });
+    
+    if (!confirm(`¿Estás seguro de que deseas eliminar ${archivosAEliminar.length} archivo(s) duplicado(s)?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/eliminar-duplicados', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                archivos: archivosAEliminar
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage(result.message, 'success');
+            // Recargar la lista de duplicados
+            await cargarDuplicados();
+        } else {
+            showMessage('Error al eliminar archivos: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión: ' + error.message, 'error');
+    }
+}
+
+// Cargar duplicados desde el servidor
+async function cargarDuplicados() {
+    try {
+        const response = await fetch('/api/archivos-duplicados');
+        const result = await response.json();
+        
+        if (result.success) {
+            displayDuplicados(result.data.archivos_duplicados || []);
+        }
+    } catch (error) {
+        console.error('Error al cargar duplicados:', error);
+    }
 }
 
 // Mostrar mensajes
@@ -767,6 +912,9 @@ function renderFolders(folders) {
                     <button class="folder-btn view" onclick="event.stopPropagation(); viewFolder('${folder.name}')">
                         👁️ Ver
                     </button>
+                    <button class="folder-btn open" onclick="event.stopPropagation(); openFolder('${folder.name}')">
+                        📂 Abrir Carpeta
+                    </button>
                 </div>
             </div>
         `;
@@ -814,6 +962,29 @@ function viewFolder(folderName) {
     // Esta función puede abrir una ventana modal o navegar a otra página
     // Por ahora, simplemente procesamos la carpeta
     processFolder(folderName);
+}
+
+// Abrir carpeta en el explorador de archivos
+async function openFolder(folderName) {
+    try {
+        const response = await fetch('/api/open_folder', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ folder_name: folderName })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage(`Explorador de archivos abierto para "${folderName}"`, 'success');
+        } else {
+            showMessage('Error al abrir carpeta: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showMessage('Error de conexión: ' + error.message, 'error');
+    }
 }
 
 // ===== FUNCIONALIDAD DE RENOMBRADO =====

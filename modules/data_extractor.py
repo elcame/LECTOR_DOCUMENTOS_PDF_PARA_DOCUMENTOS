@@ -2,6 +2,8 @@
 Módulo para extracción de datos específicos de manifiestos
 """
 import re
+from difflib import SequenceMatcher
+import unicodedata
 from datetime import datetime
 
 
@@ -34,7 +36,6 @@ def extraer_datos_manifiesto(texto_extraido):
     KOF = re.findall(palabraclave6, texto_extraido)
     KBQ = re.findall(palabraclave7, texto_extraido)
     destino = re.findall(palabraclave8, texto_extraido)
-    
     # Filtrar placas válidas (excluir palabras como "FECHA", "No", etc.)
     placa = []
     palabras_invalidas = ['FECHA', 'No', 'encontrado', 'encontrada', 'vacio', 'N/A', 'NA']
@@ -202,10 +203,39 @@ def limpiar_datos(datos):
     Returns:
         dict: Diccionario con datos limpios
     """
-    print("=== LIMPIANDO DATOS ===")
-    print(f"Datos antes de limpiar: {datos}")
-    
+ 
     datos_limpios = {}
+
+    def reemplazar_barranquilla_profesional(texto: str) -> str:
+        """Reemplaza variaciones de 'Barranquilla' en un texto usando coincidencia difusa.
+
+        - Detecta errores comunes, puntos intermedios (ej. "B.Arranquilla") y typos.
+        - Umbral de similitud 0.8 sobre tokens alfanuméricos.
+        """
+        if not isinstance(texto, str) or not texto:
+            return texto
+
+        objetivo = 'barranquilla'
+
+        def limpiar_token(token: str) -> str:
+            # Mantener solo letras para comparar, en minúsculas
+            return re.sub(r"[^a-z]", "", token.lower())
+
+        # Analizar por tokens separados por espacios
+        tokens = re.findall(r"\S+", texto)
+        for token in tokens:
+            base = limpiar_token(token)
+            if not base:
+                continue
+            # Reglas rápidas por prefijo para rendimiento
+            if base.startswith("barranq") or base.startswith("barranquil"):
+                texto = texto.replace(token, "Barranquilla")
+                continue
+            # Coincidencia difusa
+            similitud = SequenceMatcher(None, base, objetivo).ratio()
+            if similitud >= 0.8:
+                texto = texto.replace(token, "Barranquilla")
+        return texto
 
     def normalizar_fecha(valor: str) -> str:
         """Convierte fechas a formato ISO YYYY-MM-DD.
@@ -270,24 +300,244 @@ def limpiar_datos(datos):
             if isinstance(valor, str):
                 valor_limpio = ' '.join(valor.split())
                 
-                # Corregir "Barranquea" a "Barranquilla" en cualquier campo
-                if 'Barranquea' in valor_limpio:
-                    valor_limpio = valor_limpio.replace('Barranquea', 'Barranquilla')
-
                 # Normalizar fechas en campos conocidos
                 if campo in ['fecha inicio', 'fecha retorno', 'fecha Generacion', 'fecha Vencimiento', 'fecha pago']:
                     valor_limpio = normalizar_fecha(valor_limpio)
+                elif campo == 'destino':
+                    valor_limpio = normalizar_destino(valor_limpio)
+                else:
+                    # Normalización profesional de variaciones de "Barranquilla" fuera de 'destino'
+                    valor_limpio = reemplazar_barranquilla_profesional(valor_limpio)
                 datos_limpios[campo] = valor_limpio
-                print(f"Campo '{campo}': '{valor}' -> '{valor_limpio}'")
+                
+               
             else:
                 # Para valores no-string (como números), mantenerlos tal como están
                 datos_limpios[campo] = valor
-                print(f"Campo '{campo}': '{valor}' (mantenido como {type(valor).__name__})")
+              
         else:
             datos_limpios[campo] = valor
-            print(f"Campo '{campo}': '{valor}' (sin cambios)")
+           
     
-    print(f"Datos después de limpiar: {datos_limpios}")
-    print("=" * 40)
-    
+
     return datos_limpios
+
+
+def normalizar_destino(destino: str) -> str:
+    """
+    Normaliza nombres de destinos para evitar duplicados por variaciones de escritura.
+    
+    Args:
+        destino (str): Nombre del destino a normalizar
+    
+    Returns:
+        str: Destino normalizado
+    """
+    if not destino or destino.lower() in ['no encontrado', 'n/a', 'na', 'vacio']:
+        return destino
+    
+    destino_limpio = destino.strip().upper()
+
+    def quitar_acentos(texto: str) -> str:
+        # Normaliza a NFD y elimina marcas diacríticas
+        return ''.join(
+            c for c in unicodedata.normalize('NFD', texto)
+            if unicodedata.category(c) != 'Mn'
+        )
+
+    def simplificar(texto: str) -> str:
+        # Sin acentos y solo letras, minúsculas
+        sin_acentos = quitar_acentos(texto)
+        return re.sub(r"[^a-z]", "", sin_acentos.lower())
+    
+    # Diccionario de normalizaciones comunes
+    normalizaciones = {
+        # Barranquilla
+        'B.ARRANQUILLA': 'BARRANQUILLA',
+        'BARRANQUILIA': 'BARRANQUILLA',
+        'BARRANQUILLA': 'BARRANQUILLA',
+        'BARANQUILLA': 'BARRANQUILLA',
+        'BARRANQUILA': 'BARRANQUILLA',
+        'BARRANQUEA': 'BARRANQUILLA',
+        
+        # Cartagena
+        'CARTAGENA': 'CARTAGENA',
+        'CARTAGENA DE INDIAS': 'CARTAGENA',
+        
+        # Santa Marta
+        'SANTA MARTA': 'SANTA MARTA',
+        'SANTAMARTA': 'SANTA MARTA',
+        'SANTA MARTA D.T.': 'SANTA MARTA',
+        
+        # Bogotá
+        'BOGOTA': 'BOGOTÁ',
+        'BOGOTÁ': 'BOGOTÁ',
+        'BOGOTA D.C.': 'BOGOTÁ',
+        'BOGOTÁ D.C.': 'BOGOTÁ',
+        
+        # Medellín
+        'MEDELLIN': 'MEDELLÍN',
+        'MEDELLÍN': 'MEDELLÍN',
+        'MEDELLIN D.T.': 'MEDELLÍN',
+        'MEDELLÍN D.T.': 'MEDELLÍN',
+        
+        # Cali
+        'CALI': 'CALI',
+        'SANTIAGO DE CALI': 'CALI',
+        
+        # Bucaramanga
+        'BUCARAMANGA': 'BUCARAMANGA',
+        'BUCARAMANGA D.T.': 'BUCARAMANGA',
+        
+        # Pereira
+        'PEREIRA': 'PEREIRA',
+        'PEREIRA D.T.': 'PEREIRA',
+        
+        # Manizales
+        'MANIZALES': 'MANIZALES',
+        'MANIZALES D.T.': 'MANIZALES',
+        
+        # Armenia
+        'ARMENIA': 'ARMENIA',
+        'ARMENIA D.T.': 'ARMENIA',
+        
+        # Villavicencio
+        'VILLAVICENCIO': 'VILLAVICENCIO',
+        'VILLAVICENCIO D.T.': 'VILLAVICENCIO',
+        
+        # Montería
+        'MONTERIA': 'MONTERÍA',
+        'MONTERÍA': 'MONTERÍA',
+        'MONTERIA D.T.': 'MONTERÍA',
+        'MONTERÍA D.T.': 'MONTERÍA',
+        
+        # Valledupar
+        'VALLEDUPAR': 'VALLEDUPAR',
+        'VALLEDUPAR D.T.': 'VALLEDUPAR',
+        
+        # Sincelejo
+        'SINCELEJO': 'SINCELEJO',
+        'SINCELEJO D.T.': 'SINCELEJO',
+        
+        # Riohacha
+        'RIOHACHA': 'RIOHACHA',
+        'RIOHACHA D.T.': 'RIOHACHA',
+        
+        # Quibdó
+        'QUIBDO': 'QUIBDÓ',
+        'QUIBDÓ': 'QUIBDÓ',
+        'QUIBDO D.T.': 'QUIBDÓ',
+        'QUIBDÓ D.T.': 'QUIBDÓ',
+        
+        # Florencia
+        'FLORENCIA': 'FLORENCIA',
+        'FLORENCIA D.T.': 'FLORENCIA',
+        
+        # Popayán
+        'POPAYAN': 'POPAYÁN',
+        'POPAYÁN': 'POPAYÁN',
+        'POPAYAN D.T.': 'POPAYÁN',
+        'POPAYÁN D.T.': 'POPAYÁN',
+        
+        # Pasto
+        'PASTO': 'PASTO',
+        'SAN JUAN DE PASTO': 'PASTO',
+        
+        # Tunja
+        'TUNJA': 'TUNJA',
+        'TUNJA D.T.': 'TUNJA',
+        
+        # Ibagué
+        'IBAGUE': 'IBAGUÉ',
+        'IBAGUÉ': 'IBAGUÉ',
+        'IBAGUE D.T.': 'IBAGUÉ',
+        'IBAGUÉ D.T.': 'IBAGUÉ',
+        
+        # Neiva
+        'NEIVA': 'NEIVA',
+        'NEIVA D.T.': 'NEIVA',
+        
+        # Yopal
+        'YOPAL': 'YOPAL',
+        'YOPAL D.T.': 'YOPAL',
+        
+        # Arauca
+        'ARAUCA': 'ARAUCA',
+        'ARAUCA D.T.': 'ARAUCA',
+        
+        # Mocoa
+        'MOCOA': 'MOCOA',
+        'MOCOA D.T.': 'MOCOA',
+        
+        # Leticia
+        'LETICIA': 'LETICIA',
+        'LETICIA D.T.': 'LETICIA',
+        
+        # San José del Guaviare
+        'SAN JOSE DEL GUAVIARE': 'SAN JOSÉ DEL GUAVIARE',
+        'SAN JOSÉ DEL GUAVIARE': 'SAN JOSÉ DEL GUAVIARE',
+        'SAN JOSE DEL GUAVIARE D.T.': 'SAN JOSÉ DEL GUAVIARE',
+        'SAN JOSÉ DEL GUAVIARE D.T.': 'SAN JOSÉ DEL GUAVIARE',
+        
+        # Puerto Carreño
+        'PUERTO CARRENO': 'PUERTO CARREÑO',
+        'PUERTO CARREÑO': 'PUERTO CARREÑO',
+        'PUERTO CARRENO D.T.': 'PUERTO CARREÑO',
+        'PUERTO CARREÑO D.T.': 'PUERTO CARREÑO',
+        
+        # Inírida
+        'INIRIDA': 'INÍRIDA',
+        'INÍRIDA': 'INÍRIDA',
+        'INIRIDA D.T.': 'INÍRIDA',
+        'INÍRIDA D.T.': 'INÍRIDA',
+        
+        # Mitú
+        'MITU': 'MITÚ',
+        'MITÚ': 'MITÚ',
+        'MITU D.T.': 'MITÚ',
+        'MITÚ D.T.': 'MITÚ',
+        
+        # Puerto Inírida
+        'PUERTO INIRIDA': 'PUERTO INÍRIDA',
+        'PUERTO INÍRIDA': 'PUERTO INÍRIDA',
+        'PUERTO INIRIDA D.T.': 'PUERTO INÍRIDA',
+        'PUERTO INÍRIDA D.T.': 'PUERTO INÍRIDA',
+        
+        # San Andrés
+        'SAN ANDRES': 'SAN ANDRÉS',
+        'SAN ANDRÉS': 'SAN ANDRÉS',
+        'SAN ANDRES D.T.': 'SAN ANDRÉS',
+        'SAN ANDRÉS D.T.': 'SAN ANDRÉS',
+        
+        # Providencia
+        'PROVIDENCIA': 'PROVIDENCIA',
+        'PROVIDENCIA D.T.': 'PROVIDENCIA',
+    }
+    
+    # Buscar normalización exacta
+    if destino_limpio in normalizaciones:
+        return normalizaciones[destino_limpio]
+    
+    # Buscar normalización parcial (para casos con espacios extra o caracteres adicionales)
+    for variacion, normalizado in normalizaciones.items():
+        if variacion in destino_limpio or destino_limpio in variacion:
+            return normalizado
+
+    # Coincidencia difusa como respaldo
+    base = simplificar(destino_limpio)
+    if base:
+        # Construir catálogo canónico único
+        canonicos = sorted(set(normalizaciones.values()))
+        mejor = None
+        mejor_score = 0.0
+        for canon in canonicos:
+            score = SequenceMatcher(None, base, simplificar(canon)).ratio()
+            if score > mejor_score:
+                mejor_score = score
+                mejor = canon
+        # Umbral conservador para evitar falsos positivos
+        if mejor and mejor_score >= 0.8:
+            return mejor
+
+    # Si no se encuentra normalización, devolver el destino original en mayúsculas
+    return destino_limpio

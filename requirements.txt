@@ -4,3 +4,4 @@ numpy==1.26.4
 PyMuPDF==1.25.0
 Werkzeug==3.0.1
 openpyxl==3.1.2
+gunicorn==21.2.0

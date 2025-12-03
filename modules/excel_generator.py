@@ -4,6 +4,7 @@ Módulo para generación de archivos Excel
 import os
 import pandas as pd
 from datetime import datetime
+from .storage import get_excel_path, get_excel_file_path
 
 
 def crear_excel(lista_archivos_excel, carpeta_original=""):
@@ -53,10 +54,8 @@ def crear_excel(lista_archivos_excel, carpeta_original=""):
             'archivo': 'ARCHIVO PDF'
         })
         
-        # Crear carpeta 'EXCEL' si no existe
-        carpeta_reportes = 'EXCEL'
-        if not os.path.exists(carpeta_reportes):
-            os.makedirs(carpeta_reportes)
+        # Usar almacenamiento persistente
+        carpeta_reportes = get_excel_path()
         
         # Definir nombre del archivo Excel basado en la carpeta
         if carpeta_original:
@@ -111,7 +110,7 @@ def obtener_ultimo_excel(carpeta_original=""):
     Returns:
         str: Ruta del archivo Excel de la carpeta, o None si no existe
     """
-    excel_folder = 'EXCEL'
+    excel_folder = get_excel_path()
     
     # Buscar Excel específico de la carpeta
     if carpeta_original:
