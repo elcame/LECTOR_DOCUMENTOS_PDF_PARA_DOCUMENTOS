@@ -4,4 +4,7 @@ numpy==1.26.4
 PyMuPDF==1.25.0
 Werkzeug==3.0.1
 openpyxl==3.1.2
-gunicorn==21.2.0
+pyzbar==0.1.9
+Pillow==10.2.0
+firebase-admin==6.5.0
+google-cloud-firestore==2.14.0

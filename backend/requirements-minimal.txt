@@ -1,0 +1,21 @@
+# Versión mínima para desarrollo rápido (sin dependencias problemáticas)
+# Usa este archivo si tienes problemas con requirements.txt
+
+# Core Flask
+Flask>=3.0.0
+Flask-CORS>=4.0.0
+Werkzeug>=3.0.0
+
+# Firebase (esencial para el proyecto)
+firebase-admin>=6.0.0
+google-cloud-firestore>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+
+# Data processing (opcional, instalar después si lo necesitas)
+# pandas>=2.0.0
+# numpy>=1.24.0
+# PyMuPDF>=1.23.0
+# openpyxl>=3.1.0
+# Pillow>=10.0.0
