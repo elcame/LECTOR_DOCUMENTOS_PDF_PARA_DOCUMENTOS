@@ -1,11 +1,13 @@
 """
-API de autenticación (Firebase)
+API de autenticación (Firebase + JWT)
 """
 import sys
 from pathlib import Path
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, current_app
 from functools import wraps
 import hashlib
+import jwt
+from datetime import datetime, timedelta, timezone
 
 # Agregar ruta raíz al path
 ROOT_DIR = Path(__file__).parent.parent.parent.parent
@@ -19,16 +21,84 @@ except ImportError as e:
 
 bp = Blueprint('auth', __name__)
 
+def get_jwt_secret():
+    """Obtener el secreto JWT desde la configuración de Flask"""
+    return current_app.config.get('SECRET_KEY', 'default-secret-key-change-in-production')
+
+def generate_token(username):
+    """Genera un token JWT para el usuario"""
+    payload = {
+        'username': username,
+        'exp': datetime.now(timezone.utc) + timedelta(days=7),  # Token válido por 7 días
+        'iat': datetime.now(timezone.utc)
+    }
+    return jwt.encode(payload, get_jwt_secret(), algorithm='HS256')
+
+def decode_token(token):
+    """Decodifica y verifica un token JWT"""
+    try:
+        payload = jwt.decode(token, get_jwt_secret(), algorithms=['HS256'])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+def get_token_from_header():
+    """Extrae el token del header Authorization o query parameter"""
+    # Debug: Imprimir toda la información de la request
+    print(f"DEBUG BACKEND - request.full_path: {request.full_path}")
+    print(f"DEBUG BACKEND - request.query_string: {request.query_string}")
+    print(f"DEBUG BACKEND - request.args: {dict(request.args)}")
+    print(f"DEBUG BACKEND - request.url: {request.url}")
+    
+    # Primero intentar header Authorization
+    auth_header = request.headers.get('Authorization')
+    print(f"DEBUG BACKEND - Authorization header: {auth_header}")
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        print(f"DEBUG BACKEND - Token extraído de header: {token[:50]}...")
+        return token
+    
+    # Si no hay header, intentar query parameter
+    token = request.args.get('token')
+    print(f"DEBUG BACKEND - Token from request.args.get('token'): {token}")
+    if token:
+        print(f"DEBUG BACKEND - Token extraído de query param: {token[:50]}...")
+        return token
+    
+    print(f"DEBUG BACKEND - No se encontró token en header ni query params")
+    return None
+
 def hash_password(password: str) -> str:
     """Hashea una contraseña"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 def is_authenticated() -> bool:
-    """Verifica si el usuario está autenticado"""
+    """Verifica si el usuario está autenticado (via JWT o sesión legacy)"""
+    print(f"DEBUG BACKEND - is_authenticated() llamado")
+    # Primero intentar JWT
+    token = get_token_from_header()
+    print(f"DEBUG BACKEND - Token from header: {'SÍ' if token else 'NO'}")
+    if token:
+        payload = decode_token(token)
+        print(f"DEBUG BACKEND - Payload decodificado: {payload}")
+        if payload and 'username' in payload:
+            return True
+    # Fallback a sesión legacy
+    session_user = session.get('username')
+    print(f"DEBUG BACKEND - Session username: {session_user}")
     return 'username' in session and session.get('username') is not None
 
 def get_current_user():
-    """Obtiene el usuario actual de la sesión"""
+    """Obtiene el usuario actual del token JWT o sesión"""
+    # Primero intentar JWT
+    token = get_token_from_header()
+    if token:
+        payload = decode_token(token)
+        if payload and 'username' in payload:
+            return payload['username']
+    # Fallback a sesión legacy
     return session.get('username')
 
 @bp.route('/login', methods=['POST'])
@@ -82,8 +152,9 @@ def login():
             if role:
                 role_name = role.get('role_name', 'conductor')
         
-        # Crear sesión
+        # Crear sesión (legacy) y generar token JWT
         session['username'] = username
+        token = generate_token(username)
         
         # Preparar datos del usuario (sin password_hash)
         user_data = {
@@ -98,6 +169,7 @@ def login():
         return jsonify({
             'success': True,
             'message': 'Login exitoso',
+            'token': token,
             'user': user_data
         })
     except Exception as e:
@@ -167,8 +239,9 @@ def register():
         )
         
         if success:
-            # Crear sesión
+            # Crear sesión (legacy) y generar token JWT
             session['username'] = username
+            token = generate_token(username)
             
             # Obtener nombre del rol
             role_name = 'conductor'
@@ -180,6 +253,7 @@ def register():
             return jsonify({
                 'success': True,
                 'message': 'Usuario registrado exitosamente',
+                'token': token,
                 'user': {
                     'username': username,
                     'email': email,

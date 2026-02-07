@@ -8,7 +8,10 @@
 export const setLocalStorage = (key, value) => {
   try {
     const serialized = JSON.stringify(value)
+    console.log('DEBUG STORAGE - setLocalStorage key:', key, 'value:', typeof value === 'string' ? value.substring(0, 50) + '...' : value)
+    console.log('DEBUG STORAGE - serialized:', serialized.substring(0, 50) + '...')
     localStorage.setItem(key, serialized)
+    console.log('DEBUG STORAGE - Verificación después de guardar:', localStorage.getItem(key) ? localStorage.getItem(key).substring(0, 50) + '...' : 'null')
     return true
   } catch (error) {
     console.error('Error guardando en localStorage:', error)
@@ -22,10 +25,14 @@ export const setLocalStorage = (key, value) => {
 export const getLocalStorage = (key, defaultValue = null) => {
   try {
     const item = localStorage.getItem(key)
+    console.log('DEBUG STORAGE - getLocalStorage key:', key, 'item:', item ? item.substring(0, 50) + '...' : null)
     if (item === null) return defaultValue
-    return JSON.parse(item)
+    const parsed = JSON.parse(item)
+    console.log('DEBUG STORAGE - parsed:', parsed ? (typeof parsed === 'string' ? parsed.substring(0, 50) + '...' : parsed) : null)
+    return parsed
   } catch (error) {
-    console.error('Error leyendo de localStorage:', error)
+    console.error('DEBUG STORAGE - Error leyendo de localStorage:', error, 'key:', key)
+    console.error('DEBUG STORAGE - Item que causó error:', localStorage.getItem(key))
     return defaultValue
   }
 }

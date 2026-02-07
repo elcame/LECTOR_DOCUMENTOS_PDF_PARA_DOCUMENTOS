@@ -1,5 +1,6 @@
 """
 Módulo de autenticación y gestión de usuarios
+Soporta autenticación por JWT (producción cross-origin) y sesión Flask (desarrollo)
 """
 import os
 import json
@@ -7,7 +8,13 @@ import hashlib
 from datetime import datetime
 from typing import Optional, Dict
 from functools import wraps
-from flask import session, redirect, url_for, request, jsonify
+from flask import session, redirect, url_for, request, jsonify, current_app
+
+# JWT para autenticación por token (necesario en producción cross-origin)
+try:
+    import jwt as pyjwt
+except ImportError:
+    pyjwt = None
 
 # Importar módulo de base de datos
 from modules.database import (
@@ -16,6 +23,51 @@ from modules.database import (
     update_user_last_login as db_update_last_login,
     get_user_role as db_get_user_role
 )
+
+
+# ============================================================
+# Funciones auxiliares JWT (para producción cross-origin)
+# ============================================================
+
+def _get_jwt_secret():
+    """Obtener secreto JWT desde la configuración de Flask"""
+    try:
+        return current_app.config.get('SECRET_KEY', None)
+    except RuntimeError:
+        # Fuera de contexto de Flask (ej. scripts)
+        return None
+
+
+def _get_token_from_request():
+    """Extraer token JWT del header Authorization o query parameter"""
+    try:
+        # 1. Header Authorization: Bearer <token>
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            return auth_header.split(' ')[1]
+        
+        # 2. Query parameter ?token=<token>
+        token = request.args.get('token')
+        if token:
+            return token
+    except RuntimeError:
+        # Fuera de contexto de request (ej. scripts)
+        pass
+    return None
+
+
+def _decode_jwt_token(token):
+    """Decodificar y verificar un token JWT"""
+    if not pyjwt:
+        return None
+    try:
+        secret = _get_jwt_secret()
+        if not secret:
+            return None
+        payload = pyjwt.decode(token, secret, algorithms=['HS256'])
+        return payload
+    except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError, Exception):
+        return None
 
 # Ruta para almacenar datos de usuarios (mantener para compatibilidad)
 USERS_DATA_DIR = 'data'
@@ -177,21 +229,43 @@ def get_user_data_folder(username: str) -> str:
 
 def get_current_user() -> Optional[str]:
     """
-    Obtiene el usuario actual de la sesión
+    Obtiene el usuario actual (JWT token o sesión Flask)
+    
+    En producción (cross-origin), se usa JWT token.
+    En desarrollo (mismo origen), se usa sesión Flask como fallback.
     
     Returns:
-        str: Nombre de usuario o None si no hay sesión
+        str: Nombre de usuario o None si no hay sesión/token
     """
+    # 1. Intentar JWT token (prioritario, funciona cross-origin)
+    token = _get_token_from_request()
+    if token:
+        payload = _decode_jwt_token(token)
+        if payload and 'username' in payload:
+            return payload['username']
+    
+    # 2. Fallback a sesión Flask (funciona en mismo origen)
     return session.get('username')
 
 
 def is_authenticated() -> bool:
     """
-    Verifica si hay un usuario autenticado
+    Verifica si hay un usuario autenticado (JWT token o sesión Flask)
+    
+    En producción (cross-origin), se verifica JWT token.
+    En desarrollo (mismo origen), se verifica sesión Flask como fallback.
     
     Returns:
         bool: True si hay usuario autenticado
     """
+    # 1. Intentar JWT token (prioritario, funciona cross-origin)
+    token = _get_token_from_request()
+    if token:
+        payload = _decode_jwt_token(token)
+        if payload and 'username' in payload:
+            return True
+    
+    # 2. Fallback a sesión Flask (funciona en mismo origen)
     return 'username' in session and session.get('username') is not None
 
 

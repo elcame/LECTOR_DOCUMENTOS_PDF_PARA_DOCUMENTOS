@@ -19,6 +19,8 @@ export const manifiestosService = {
    */
   async getOverview(folderName = null) {
     const params = folderName ? { folder_name: folderName } : {}
+    // Agregar timestamp para evitar caché del navegador
+    params._t = Date.now()
     const response = await api.get(ENDPOINTS.MANIFIESTOS.OVERVIEW, { params })
     return response.data
   },
@@ -28,14 +30,45 @@ export const manifiestosService = {
    * @param {string} folderName - Nombre de la carpeta de destino
    * @param {File[]} files - Archivos PDF
    */
-  async uploadFolder(folderName, files) {
+  async uploadFile(folderName, file) {
     const formData = new FormData()
     formData.append('folder_name', folderName)
-    files.forEach((f) => formData.append('files', f))
-    const response = await api.post(ENDPOINTS.MANIFIESTOS.UPLOAD_FOLDER, formData, {
+    formData.append('file', file)
+    const response = await api.post(ENDPOINTS.MANIFIESTOS.UPLOAD_FILE, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return response.data
+  },
+
+  async uploadFolder(folderName, files) {
+    const results = []
+    let saved = 0
+    let skipped = 0
+
+    for (const f of files) {
+      try {
+        const res = await this.uploadFile(folderName, f)
+        if (res?.success) {
+          saved += 1
+          results.push(res?.data)
+        } else {
+          skipped += 1
+        }
+      } catch (e) {
+        skipped += 1
+      }
+    }
+
+    return {
+      success: true,
+      message: `Se subieron ${saved} archivo(s) a la carpeta "${folderName}".`,
+      data: {
+        folder_name: folderName,
+        saved_count: saved,
+        skipped_count: skipped,
+        files: results,
+      },
+    }
   },
 
   /**
@@ -92,6 +125,8 @@ export const manifiestosService = {
    */
   async getPDFs(folderName = null) {
     const params = folderName ? { folder_name: folderName } : {}
+    // Agregar timestamp para evitar caché del navegador
+    params._t = Date.now()
     const response = await api.get(ENDPOINTS.MANIFIESTOS.PDFS, { params })
     return response.data
   },
@@ -127,11 +162,135 @@ export const manifiestosService = {
   },
 
   /**
+   * Descargar un PDF completo
+   * @param {string} filename - Nombre del archivo PDF
+   * @param {string} folderName - Nombre de la carpeta
+   * @returns {Promise<Blob>} Blob del PDF para descargar
+   */
+  async downloadPDF(filename, folderName) {
+    const response = await api.get(ENDPOINTS.MANIFIESTOS.PDF_DOWNLOAD(filename), {
+      params: { folder_name: folderName },
+      responseType: 'blob'
+    })
+    return response.data
+  },
+
+  /**
+   * Descargar todos los PDFs de una carpeta como archivo ZIP
+   * @param {string} folderName - Nombre de la carpeta
+   * @returns {Promise<void>} Descarga el archivo ZIP
+   */
+  async downloadFolderZip(folderName) {
+    const response = await api.get(ENDPOINTS.MANIFIESTOS.DOWNLOAD_FOLDER_ZIP, {
+      params: { folder_name: folderName },
+      responseType: 'blob'
+    })
+    
+    // Crear un enlace temporal para descargar el archivo
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `${folderName}.zip`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  },
+
+  /**
+   * Descargar Excel de una carpeta procesada
+   * @param {string} folderName - Nombre de la carpeta
+   * @returns {Promise<void>} Descarga el archivo Excel
+   */
+  async downloadExcel(folderName) {
+    const response = await api.get(ENDPOINTS.MANIFIESTOS.DOWNLOAD_EXCEL, {
+      params: { folder_name: folderName },
+      responseType: 'blob'
+    })
+    
+    // Crear un enlace temporal para descargar el archivo
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `manifiestos_${folderName}.xlsx`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  },
+
+  /**
    * Fusionar páginas de un PDF en otro PDF
    * @param {object} mergeData - { source_folder, source_filename, target_folder, target_filename, pages }
    */
   async mergePDFPages(mergeData) {
     const response = await api.post(ENDPOINTS.MANIFIESTOS.PDF_MERGE, mergeData)
+    return response.data
+  },
+
+  /**
+   * Eliminar páginas específicas de un PDF
+   * @param {string} folderName - Nombre de la carpeta
+   * @param {string} filename - Nombre del archivo
+   * @param {number[]} pages - Array de números de página a eliminar (1-indexed)
+   * @returns {Promise<Object>} Resultado de la eliminación
+   */
+  async deletePDFPages(folderName, filename, pages) {
+    const response = await api.post(ENDPOINTS.MANIFIESTOS.PDF_DELETE_PAGES, {
+      folder_name: folderName,
+      filename: filename,
+      pages: pages
+    })
+    return response.data
+  },
+
+  /**
+   * Dividir un PDF en dos partes
+   * @param {string} folderName - Nombre de la carpeta
+   * @param {string} filename - Nombre del archivo
+   * @param {number} splitAtPage - Página donde dividir (1-indexed)
+   * @param {Object} options - Opciones adicionales
+   * @returns {Promise<Object>} Resultado de la división
+   */
+  async splitPDF(folderName, filename, splitAtPage, options = {}) {
+    const response = await api.post(ENDPOINTS.MANIFIESTOS.PDF_SPLIT, {
+      folder_name: folderName,
+      filename: filename,
+      split_at_page: splitAtPage,
+      part1_name: options.part1_name,
+      part2_name: options.part2_name,
+      keep_original: options.keep_original || false
+    })
+    return response.data
+  },
+
+  /**
+   * Renombrar un PDF
+   * @param {string} folderName - Nombre de la carpeta
+   * @param {string} oldFilename - Nombre actual del archivo
+   * @param {string} newFilename - Nuevo nombre del archivo
+   * @returns {Promise<Object>} Resultado del renombrado
+   */
+  async renamePDF(folderName, oldFilename, newFilename) {
+    const response = await api.post(ENDPOINTS.MANIFIESTOS.PDF_RENAME, {
+      folder_name: folderName,
+      old_filename: oldFilename,
+      new_filename: newFilename
+    })
+    return response.data
+  },
+
+  /**
+   * Renombrar múltiples PDFs usando un patrón
+   * @param {string} folderName - Nombre de la carpeta
+   * @param {string} pattern - Patrón de renombrado (ej: '{load_id}_{remesa}')
+   * @returns {Promise<Object>} Resultado del renombrado masivo
+   */
+  async bulkRenamePDFs(folderName, pattern) {
+    const response = await api.post(ENDPOINTS.MANIFIESTOS.PDF_BULK_RENAME, {
+      folder_name: folderName,
+      pattern: pattern
+    })
     return response.data
   },
 
@@ -172,6 +331,19 @@ export const manifiestosService = {
         type: folderType
       }
     })
+    return response.data
+  },
+
+  /**
+   * Obtener manifiestos con todos sus datos desde Firestore
+   * @param {string} folderName - Opcional: filtrar por nombre de carpeta
+   * @returns {Promise<Object>} Manifiestos con datos completos
+   */
+  async getManifiestosData(folderName = null) {
+    const params = folderName ? { folder_name: folderName } : {}
+    // Agregar timestamp para evitar caché del navegador
+    params._t = Date.now()
+    const response = await api.get(ENDPOINTS.MANIFIESTOS.MANIFIESTOS_DATA, { params })
     return response.data
   },
 }

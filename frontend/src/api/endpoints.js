@@ -16,17 +16,26 @@ export const ENDPOINTS = {
     OVERVIEW: '/manifiestos/overview',
     FOLDER_DELETE: (folderName) => `/manifiestos/folders/${folderName}`,
     UPLOAD_FOLDER: '/manifiestos/upload_folder',
+    UPLOAD_FILE: '/manifiestos/upload_file',
     PROCESS_FOLDER: '/manifiestos/process_folder',
     PDFS: '/manifiestos/pdfs',
     PDF_PAGES: (filename) => `/manifiestos/pdf/${filename}/pages`,
     PDF_THUMBNAIL: (filename) => `/manifiestos/pdf/${filename}/thumbnail`,
+    PDF_DOWNLOAD: (filename) => `/manifiestos/pdf/${filename}/download`,
     PDF_MERGE: '/manifiestos/pdf/merge',
     PDF_DELETE: '/manifiestos/pdf/delete',
+    PDF_DELETE_PAGES: '/manifiestos/pdf/delete-pages',
+    PDF_SPLIT: '/manifiestos/pdf/split',
+    PDF_RENAME: '/manifiestos/pdf/rename',
+    PDF_BULK_RENAME: '/manifiestos/pdf/bulk-rename',
+    DOWNLOAD_FOLDER_ZIP: '/manifiestos/download_folder_zip',
+    DOWNLOAD_EXCEL: '/manifiestos/download_excel',
     STORAGE_STATS: '/manifiestos/storage-stats',
     UPDATE_FIELD: '/manifiestos/update_field',
     ARCHIVOS_QR: '/manifiestos/archivos_qr',
     UPDATE_QR_FIELD: '/manifiestos/update_qr_field',
     PROCESS_FOLDER_QR: '/manifiestos/process_folder_qr',
+    MANIFIESTOS_DATA: '/manifiestos/manifiestos_data',
   },
   
   // Operaciones
@@ -70,5 +79,15 @@ export const ENDPOINTS = {
     BY_USERNAME: (username) => `/usuarios-firebase/${username}`,
     ROLE: (username) => `/usuarios-firebase/${username}/role`,
     BY_ROLE: (roleId) => `/usuarios-firebase/by-role/${roleId}`,
+  },
+  
+  // Gastos de viaje y tipos de gastos
+  EXPENSES: {
+    TYPES: '/expenses/expense-types',
+    TYPE_BY_ID: (typeId) => `/expenses/expense-types/${typeId}`,
+    INITIALIZE_TYPES: '/expenses/expense-types/initialize',
+    TRIP_EXPENSES: '/expenses/trip-expenses',
+    TRIP_EXPENSE_BY_ID: (expenseId) => `/expenses/trip-expenses/${expenseId}`,
+    TOTAL_EXPENSES: (manifestId) => `/expenses/trip-expenses/total/${manifestId}`,
   },
 }

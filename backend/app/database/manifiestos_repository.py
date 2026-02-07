@@ -152,6 +152,21 @@ class ManifiestosRepository(FirebaseRepository):
             print(traceback.format_exc())
             return (False, f"Error al guardar manifiesto: {str(e)}", None)
     
+    def get_all_manifiestos(self) -> List[Dict]:
+        """
+        Obtiene todos los manifiestos activos sin filtros
+        
+        Returns:
+            Lista de todos los manifiestos activos
+        """
+        try:
+            filters = [('active', '==', True)]
+            results = self.get_all(filters=filters, order_by='fecha_procesamiento')
+            return results
+        except Exception as e:
+            print(f"Error al obtener todos los manifiestos: {e}")
+            return []
+    
     def get_manifiestos(self, username: str = '', folder_name: str = '', 
                        load_id: Optional[str] = None, remesa: Optional[str] = None) -> List[Dict]:
         """

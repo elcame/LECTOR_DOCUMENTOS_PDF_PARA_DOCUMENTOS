@@ -6,9 +6,13 @@ from pathlib import Path
 
 class Config:
     """Configuración base"""
-    SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(32).hex()
+    # IMPORTANTE: En producción (Cloud Run), configurar SECRET_KEY como variable de entorno
+    # Si no se configura, se usa un fallback fijo para que los JWT sobrevivan cold starts
+    # Para mayor seguridad, ejecutar en Cloud Run:
+    #   gcloud run services update lector-manifiestos-backend --set-env-vars SECRET_KEY=tu-clave-secreta-aqui
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'lector-manifiestos-default-jwt-secret-2026'
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SAMESITE = 'Lax'  # JWT maneja auth cross-origin, cookies solo para desarrollo
     SESSION_COOKIE_SECURE = False  # True en producción con HTTPS
     
     # Base de datos

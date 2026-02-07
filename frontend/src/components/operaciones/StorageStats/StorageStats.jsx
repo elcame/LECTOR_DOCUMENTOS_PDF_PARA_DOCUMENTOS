@@ -82,17 +82,13 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, file: null, folder: null })
   const [deleting, setDeleting] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [downloadingFolder, setDownloadingFolder] = useState(null)
+  const [downloadingExcel, setDownloadingExcel] = useState(null)
 
   useEffect(() => {
-    if (fromParent && storageFromParent != null) {
-      setStats(storageFromParent)
-      setLoading(false)
-    }
-  }, [fromParent, storageFromParent])
-
-  useEffect(() => {
-    if (!fromParent) loadStats()
-  }, [fromParent])
+    // Siempre cargar los datos completos desde el endpoint
+    loadStats()
+  }, [])
 
   useEffect(() => {
     if (successMessage) {
@@ -118,6 +114,30 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
       setError(err?.message || 'Error al cargar estadísticas')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDownloadFolderZip = async (folderName) => {
+    try {
+      setDownloadingFolder(folderName)
+      await manifiestosService.downloadFolderZip(folderName)
+      setSuccessMessage(`Carpeta "${folderName}" descargada exitosamente`)
+    } catch (err) {
+      setError(err?.message || 'Error al descargar carpeta')
+    } finally {
+      setDownloadingFolder(null)
+    }
+  }
+
+  const handleDownloadExcel = async (folderName) => {
+    try {
+      setDownloadingExcel(folderName)
+      await manifiestosService.downloadExcel(folderName)
+      setSuccessMessage(`Excel de "${folderName}" descargado exitosamente`)
+    } catch (err) {
+      setError(err?.message || 'Error al descargar Excel. Asegúrate de que la carpeta haya sido procesada.')
+    } finally {
+      setDownloadingExcel(null)
     }
   }
 
@@ -218,7 +238,8 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
   if (!stats) return null
 
   const maxSize = 5 * 1024 * 1024 * 1024 // 5 GB límite estimado
-  const usagePercentage = (stats.total_size / maxSize) * 100
+  const totalSize = stats.total_size_bytes || stats.total_size || 0
+  const usagePercentage = (totalSize / maxSize) * 100
   
   let usageColor = 'green'
   if (usagePercentage > 80) usageColor = 'red'
@@ -262,7 +283,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total de Archivos"
-          value={stats.total_files}
+          value={stats?.total_files || 0}
           subtitle="PDFs almacenados"
           color="blue"
           icon={
@@ -274,7 +295,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
         
         <StatCard
           title="Espacio Usado"
-          value={formatFileSize(stats.total_size)}
+          value={formatFileSize(totalSize)}
           subtitle={`de ${formatFileSize(maxSize)}`}
           color="green"
           icon={
@@ -286,7 +307,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
         
         <StatCard
           title="Carpetas"
-          value={stats.folders.length}
+          value={stats?.folders?.length || 0}
           subtitle="Organizadas"
           color="purple"
           icon={
@@ -298,7 +319,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
         
         <StatCard
           title="Espacio Disponible"
-          value={formatFileSize(maxSize - stats.total_size)}
+          value={formatFileSize(maxSize - totalSize)}
           subtitle={`${(100 - usagePercentage).toFixed(1)}% libre`}
           color="orange"
           icon={
@@ -322,12 +343,12 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
           </span>
         </div>
         <ProgressBar 
-          value={stats.total_size} 
+          value={totalSize} 
           max={maxSize} 
           color={usageColor}
         />
         <p className="text-xs text-gray-500 mt-2">
-          {formatFileSize(stats.total_size)} de {formatFileSize(maxSize)} utilizados
+          {formatFileSize(totalSize)} de {formatFileSize(maxSize)} utilizados
         </p>
       </div>
 
@@ -375,7 +396,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
               <div>
                 <h4 className="text-md font-semibold text-gray-900 mb-4">Top 5 Carpetas por Tamaño</h4>
                 <div className="space-y-3">
-                  {stats.folders.slice(0, 5).map((folder, index) => (
+                  {(stats?.folders || []).slice(0, 5).map((folder, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3 flex-1">
                         <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -389,7 +410,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
                       <div className="text-right">
                         <p className="text-sm font-semibold text-gray-900">{formatFileSize(folder.size)}</p>
                         <p className="text-xs text-gray-500">
-                          {((folder.size / stats.total_size) * 100).toFixed(1)}%
+                          {totalSize > 0 ? ((folder.size / totalSize) * 100).toFixed(1) : 0}%
                         </p>
                       </div>
                     </div>
@@ -400,7 +421,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
               <div>
                 <h4 className="text-md font-semibold text-gray-900 mb-4">Archivos Recientes</h4>
                 <div className="space-y-2">
-                  {stats.recent_files.slice(0, 5).map((file, index) => (
+                  {(stats?.recent_files || []).slice(0, 5).map((file, index) => (
                     <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded group">
                       <div className="flex items-center space-x-2 flex-1 min-w-0">
                         <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -438,7 +459,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
           {/* Tab: Por Carpetas */}
           {selectedTab === 'folders' && (
             <div className="space-y-3">
-              {stats.folders.map((folder, index) => (
+              {(stats?.folders || []).map((folder, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
                   <div 
                     className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
@@ -457,9 +478,49 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
                       <div className="text-right">
                         <p className="text-sm font-semibold text-gray-900">{formatFileSize(folder.size)}</p>
                         <p className="text-xs text-gray-500">
-                          {((folder.size / stats.total_size) * 100).toFixed(1)}%
+                          {totalSize > 0 ? ((folder.size / totalSize) * 100).toFixed(1) : 0}%
                         </p>
                       </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDownloadFolderZip(folder.folder_name)
+                        }}
+                        disabled={downloadingFolder === folder.folder_name}
+                        className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Descargar PDFs como ZIP"
+                      >
+                        {downloadingFolder === folder.folder_name ? (
+                          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                        )}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDownloadExcel(folder.folder_name)
+                        }}
+                        disabled={downloadingExcel === folder.folder_name}
+                        className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Descargar Excel"
+                      >
+                        {downloadingExcel === folder.folder_name ? (
+                          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        )}
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -485,7 +546,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
                     </div>
                   </div>
                   
-                  {expandedFolder === index && folder.files.length > 0 && (
+                  {expandedFolder === index && folder.files && folder.files.length > 0 && (
                     <div className="p-4 bg-white border-t border-gray-200">
                       <p className="text-xs font-semibold text-gray-600 mb-2">Archivos más grandes:</p>
                       <div className="space-y-2">
@@ -511,7 +572,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
               <p className="text-sm text-gray-600 mb-4">
                 Los 10 archivos más grandes en tu almacenamiento
               </p>
-              {stats.largest_files.map((file, index) => (
+              {(stats?.largest_files || []).map((file, index) => (
                 <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 group">
                   <div className="flex items-center space-x-3 flex-1 min-w-0">
                     <div className="flex-shrink-0 w-8 h-8 bg-red-100 rounded flex items-center justify-center">
@@ -547,7 +608,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
       </div>
 
       {/* Info de Firebase Storage */}
-      {stats.storage_info.available && (
+      {stats?.storage_info?.available && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">
             <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -558,7 +619,7 @@ export default function StorageStats({ storage: storageFromParent, fromParent = 
                 Firebase Storage Conectado
               </p>
               <p className="text-xs text-blue-700 mt-1">
-                Bucket: {stats.storage_info.bucket_name}
+                Bucket: {stats?.storage_info?.bucket_name || 'N/A'}
               </p>
             </div>
           </div>

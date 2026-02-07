@@ -16,12 +16,14 @@ const api = axios.create({
   },
 })
 
-// Interceptor de request
+// Interceptor de request - Siempre enviar token como Authorization header
 api.interceptors.request.use(
   (config) => {
-    // Agregar token si existe
     const token = getLocalStorage(STORAGE_KEYS.AUTH_TOKEN)
+    
     if (token) {
+      // Usar Authorization header en todos los entornos (producción y desarrollo)
+      // El backend soporta tanto header como query parameter
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
@@ -34,17 +36,27 @@ api.interceptors.request.use(
 // Interceptor de response
 api.interceptors.response.use(
   (response) => {
-    // Retornar solo los datos
     return response
   },
   (error) => {
-    // Manejar errores
     const handledError = errorHandler(error)
     
-    // Si es error 401, limpiar datos de autenticación
     if (handledError.status === 401) {
-      removeLocalStorage(STORAGE_KEYS.AUTH_TOKEN)
-      removeLocalStorage(STORAGE_KEYS.USER_DATA)
+      // Si la petición TENÍA un token y aún así devuelve 401,
+      // significa que el token es inválido/expirado → limpiar y redirigir
+      const hadToken = error?.config?.headers?.Authorization
+      if (hadToken) {
+        removeLocalStorage(STORAGE_KEYS.AUTH_TOKEN)
+        removeLocalStorage(STORAGE_KEYS.USER_DATA)
+        // Redirigir solo si no estamos ya en una ruta pública
+        const path = window.location.pathname
+        const rutasPublicas = ['/', '/landing', '/login', '/register']
+        if (!rutasPublicas.includes(path)) {
+          window.location.href = '/login'
+        }
+      }
+      // Si NO tenía token (ej. checkAuth en primera carga), solo propagar el error
+      // El AuthContext maneja este caso poniendo user = null
     }
     
     return Promise.reject(handledError)

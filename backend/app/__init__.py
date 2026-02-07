@@ -30,24 +30,42 @@ def create_app(config_class=Config):
     
     # Configurar CORS para permitir requests del frontend
     CORS(app, 
-         origins=["http://localhost:3000", "http://localhost:5173"],
+         origins=["http://localhost:3000", "http://localhost:5173", "https://almacenamiento-acr.web.app", "https://almacenamiento-acr.firebaseapp.com"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With"],
          supports_credentials=True)
     
     # Registrar blueprints
     from app.api.auth import bp as auth_bp
-    from app.api.manifiestos import bp as manifiestos_bp
     from app.api.usuarios import bp as usuarios_bp
     from app.api.operaciones import bp as operaciones_bp
     from app.api.gastos import bp as gastos_bp
     from app.api.roles import bp as roles_bp
     from app.api.usuarios_firebase import bp as usuarios_firebase_bp
+    from app.api.expenses import bp as expenses_bp
+    
+    # Blueprints modulares de manifiestos
+    from app.api.manifiestos_folders import bp as manifiestos_folders_bp
+    from app.api.manifiestos_upload import bp as manifiestos_upload_bp
+    from app.api.manifiestos_data import bp as manifiestos_data_bp
+    from app.api.manifiestos_processing import bp as manifiestos_processing_bp
+    from app.api.manifiestos_qr import bp as manifiestos_qr_bp
+    from app.api.manifiestos_pdf_ops import bp as manifiestos_pdf_ops_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(manifiestos_bp, url_prefix='/api/manifiestos')
     app.register_blueprint(usuarios_bp, url_prefix='/api/usuarios')
     app.register_blueprint(operaciones_bp, url_prefix='/api/operaciones')
     app.register_blueprint(gastos_bp, url_prefix='/api/gastos')
     app.register_blueprint(roles_bp, url_prefix='/api/roles')
     app.register_blueprint(usuarios_firebase_bp, url_prefix='/api/usuarios-firebase')
+    app.register_blueprint(expenses_bp, url_prefix='/api/expenses')
+    
+    # Registrar blueprints modulares de manifiestos (todos bajo /api/manifiestos)
+    app.register_blueprint(manifiestos_folders_bp, url_prefix='/api/manifiestos')
+    app.register_blueprint(manifiestos_upload_bp, url_prefix='/api/manifiestos')
+    app.register_blueprint(manifiestos_data_bp, url_prefix='/api/manifiestos')
+    app.register_blueprint(manifiestos_processing_bp, url_prefix='/api/manifiestos')
+    app.register_blueprint(manifiestos_qr_bp, url_prefix='/api/manifiestos')
+    app.register_blueprint(manifiestos_pdf_ops_bp, url_prefix='/api/manifiestos')
     
     return app

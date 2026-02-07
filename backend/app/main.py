@@ -19,6 +19,12 @@ from app import create_app, config
 env = os.environ.get('FLASK_ENV', 'development')
 app = create_app(config.get(env, config['default']))
 
+# Verificar SECRET_KEY en producción
+if env == 'production' and not os.environ.get('SECRET_KEY'):
+    print("⚠️ ADVERTENCIA: SECRET_KEY no está configurado como variable de entorno")
+    print("⚠️ Los JWT tokens podrían no ser seguros. Configura SECRET_KEY en Cloud Run:")
+    print("⚠️   gcloud run services update lector-manifiestos-backend --set-env-vars SECRET_KEY=tu-clave-secreta")
+
 # Inicializar autenticación y base de datos
 with app.app_context():
     try:

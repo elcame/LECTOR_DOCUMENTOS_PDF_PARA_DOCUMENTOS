@@ -3,7 +3,7 @@ Repositorio base para operaciones con Firebase
 """
 from typing import Dict, List, Optional, Any
 from datetime import datetime
-from google.cloud.firestore import Client, Query
+from google.cloud.firestore import Client, Query, FieldFilter
 import sys
 from pathlib import Path
 
@@ -137,7 +137,7 @@ class FirebaseRepository:
         # Aplicar filtros
         if filters:
             for field, operator, value in filters:
-                query = query.where(field, operator, value)
+                query = query.where(filter=FieldFilter(field, operator, value))
         
         # Ordenar
         if order_by:
@@ -169,7 +169,7 @@ class FirebaseRepository:
         query = self.collection
         
         for field, operator, value in filters:
-            query = query.where(field, operator, value)
+            query = query.where(filter=FieldFilter(field, operator, value))
         
         docs = list(query.limit(1).stream())
         if docs:

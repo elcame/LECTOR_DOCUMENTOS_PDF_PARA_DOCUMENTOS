@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { manifiestosService } from '../../../services/manifiestosService'
 
 /**
  * Componente para mostrar los resultados del procesamiento de una carpeta
@@ -6,6 +7,10 @@ import { useState } from 'react'
  */
 export default function ProcessingResults({ data, folderName, onClose }) {
   const [activeTab, setActiveTab] = useState('summary') // summary, saved, duplicates, errors
+  const [manifiestos, setManifiestos] = useState([])
+  const [editingCell, setEditingCell] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [saving, setSaving] = useState(false)
 
   if (!data) return null
 
@@ -18,8 +23,156 @@ export default function ProcessingResults({ data, folderName, onClose }) {
     manifiestos_duplicados_firebase = [],
     archivos_duplicados = [],
     manifiestos_errores = [],
-    manifiestos = []
+    manifiestos: rawManifiestos = []
   } = data
+
+  // Cargar y ordenar manifiestos
+  useEffect(() => {
+    if (rawManifiestos && rawManifiestos.length > 0) {
+      // Ordenar: manifiestos con campos vacíos primero
+      const sorted = [...rawManifiestos].sort((a, b) => {
+        const aEmpty = hasEmptyFields(a)
+        const bEmpty = hasEmptyFields(b)
+        if (aEmpty && !bEmpty) return -1
+        if (!aEmpty && bEmpty) return 1
+        return 0
+      })
+      setManifiestos(sorted)
+    }
+  }, [rawManifiestos])
+
+  // Verificar si un manifiesto tiene campos vacíos
+  const hasEmptyFields = (manifiesto) => {
+    const fieldsToCheck = ['fecha inicio', 'anticipo', 'load_id', 'remesa', 'placa', 'conductor']
+    return fieldsToCheck.some(field => {
+      const value = manifiesto[field]
+      return !value || value === 'No encontrado' || value === 'No encontrada' || value === '' || value === 'NO_ENCONTRADO'
+    })
+  }
+
+  // Manejar inicio de edición
+  const handleStartEdit = (manifestoIndex, field, currentValue) => {
+    setEditingCell({ index: manifestoIndex, field })
+    setEditValue(currentValue || '')
+  }
+
+  // Manejar guardado de edición
+  const handleSaveEdit = async () => {
+    if (!editingCell) return
+
+    const { index, field } = editingCell
+    const manifiesto = manifiestos[index]
+
+    setSaving(true)
+    try {
+      // Generar manifest_id basado en load_id, remesa o archivo
+      let manifestId = manifiesto.id
+      if (!manifestId) {
+        const loadId = manifiesto.load_id || manifiesto['load_id']
+        const remesa = manifiesto.remesa
+        const archivo = manifiesto.archivo
+        
+        if (loadId && loadId !== 'No encontrado') {
+          manifestId = `load_id_${loadId}`
+        } else if (remesa && remesa !== 'No encontrada') {
+          manifestId = `remesa_${remesa}`
+        } else {
+          // Fallback: usar username_archivo
+          const username = 'current_user' // Se obtiene del contexto
+          const safeArchivo = archivo.replace(/[/\\\.]/g, '_')
+          manifestId = `${username}_${safeArchivo}`
+        }
+      }
+
+      // Actualizar en el backend
+      await manifiestosService.updateField(manifestId, field, editValue)
+
+      // Actualizar localmente
+      const updated = [...manifiestos]
+      updated[index] = { ...updated[index], [field]: editValue }
+      setManifiestos(updated)
+
+      setEditingCell(null)
+      setEditValue('')
+    } catch (error) {
+      console.error('Error al actualizar campo:', error)
+      alert('Error al guardar el cambio: ' + (error.response?.data?.error || error.message))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Manejar cancelación de edición
+  const handleCancelEdit = () => {
+    setEditingCell(null)
+    setEditValue('')
+  }
+
+  // Renderizar celda editable
+  const renderEditableCell = (manifiesto, index, field, displayField = null) => {
+    const actualField = displayField || field
+    const value = manifiesto[actualField]
+    const isEmpty = !value || value === 'No encontrado' || value === 'No encontrada' || value === '' || value === 'NO_ENCONTRADO'
+    const isEditing = editingCell?.index === index && editingCell?.field === actualField
+
+    if (isEditing) {
+      return (
+        <div className="flex items-center gap-1">
+          <input
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveEdit()
+              if (e.key === 'Escape') handleCancelEdit()
+            }}
+            className="input text-sm py-1 px-2 w-full"
+            autoFocus
+            disabled={saving}
+          />
+          <button
+            onClick={handleSaveEdit}
+            disabled={saving}
+            className="text-green-600 hover:text-green-800 p-1"
+            title="Guardar"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+          <button
+            onClick={handleCancelEdit}
+            disabled={saving}
+            className="text-red-600 hover:text-red-800 p-1"
+            title="Cancelar"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div
+        onClick={() => handleStartEdit(index, actualField, value)}
+        className={`cursor-pointer hover:bg-gray-100 px-2 py-1 rounded group ${
+          isEmpty ? 'bg-red-50 border border-red-200' : ''
+        }`}
+        title="Click para editar"
+      >
+        {isEmpty ? (
+          <span className="text-red-600 text-xs font-medium">⚠️ Vacío</span>
+        ) : (
+          <span className="text-sm">{value}</span>
+        )}
+        <svg className="w-3 h-3 inline ml-1 opacity-0 group-hover:opacity-100 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+      </div>
+    )
+  }
 
   const tabs = [
     { id: 'summary', label: 'Resumen', count: null },
@@ -176,64 +329,87 @@ export default function ProcessingResults({ data, folderName, onClose }) {
         {/* Tab: Guardados */}
         {activeTab === 'saved' && (
           <div>
-            {manifiestos_guardados.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                        #
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                        Archivo
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                        Load ID
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                        Remesa
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                        Estado
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {manifiestos_guardados.map((item, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {index + 1}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {item.archivo}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {item.load_id !== 'No encontrado' ? (
-                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
-                              {item.load_id}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                          {item.remesa !== 'No encontrada' ? (
-                            <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
-                              {item.remesa}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
-                            Guardado
-                          </span>
-                        </td>
+            {manifiestos.length > 0 ? (
+              <div>
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>💡 Tip:</strong> Click en cualquier celda para editarla. Los campos vacíos aparecen primero con fondo rojo.
+                  </p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50">
+                          #
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Archivo
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Load ID
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Remesa
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Placa
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Conductor
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Fecha Inicio
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Anticipo
+                        </th>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                          Destino
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {manifiestos.map((manifiesto, index) => {
+                        const isEmpty = hasEmptyFields(manifiesto)
+                        return (
+                          <tr key={index} className={`hover:bg-gray-50 ${isEmpty ? 'bg-red-50/30' : ''}`}>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500 sticky left-0 bg-white">
+                              {isEmpty && (
+                                <span className="inline-block w-2 h-2 bg-red-500 rounded-full mr-2" title="Tiene campos vacíos"></span>
+                              )}
+                              {index + 1}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {manifiesto.archivo}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              {renderEditableCell(manifiesto, index, 'load_id')}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              {renderEditableCell(manifiesto, index, 'remesa')}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              {renderEditableCell(manifiesto, index, 'placa')}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              {renderEditableCell(manifiesto, index, 'conductor')}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              {renderEditableCell(manifiesto, index, 'fecha_inicio', 'fecha inicio')}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              {renderEditableCell(manifiesto, index, 'anticipo')}
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              {renderEditableCell(manifiesto, index, 'destino')}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
               <div className="text-center py-12">

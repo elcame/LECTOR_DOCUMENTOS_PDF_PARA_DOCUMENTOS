@@ -1,28 +1,19 @@
 /**
- * Rutas públicas donde un 401 es esperado (usuario no logueado)
- * NO redirigir a /login cuando estamos en estas rutas
- */
-const RUTAS_PUBLICAS = ['/', '/landing', '/login', '/register']
-
-/**
  * Manejo centralizado de errores de la API
+ * 
+ * NOTA: La lógica de redirección por 401 y limpieza de token se maneja 
+ * en el interceptor de Axios (api/index.js), NO aquí.
  */
 export const errorHandler = (error) => {
   if (error.response) {
     // Error de respuesta del servidor
     const { status, data } = error.response
-    const pathActual = window.location.pathname
-    const esRutaPublica = RUTAS_PUBLICAS.includes(pathActual)
     
     switch (status) {
       case 401:
-        // No autorizado - solo redirigir a login si el usuario estaba en una ruta PROTEGIDA
-        // (si está en /, /landing, /login, /register es normal que getCurrentUser falle con 401)
-        if (!esRutaPublica && pathActual !== '/login') {
-          localStorage.removeItem('auth_token')
-          localStorage.removeItem('user_data')
-          window.location.href = '/login'
-        }
+        // No autorizado - NO limpiar token ni redirigir aquí
+        // El interceptor de Axios y el AuthContext manejan la lógica de sesión
+        // Esto evita la cascada: endpoint 401 -> borra token -> recarga -> /me sin token -> 401
         return { 
           message: 'Sesión expirada. Por favor, inicia sesión nuevamente.', 
           status,

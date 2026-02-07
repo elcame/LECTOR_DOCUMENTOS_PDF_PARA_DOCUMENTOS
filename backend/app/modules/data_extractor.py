@@ -3,13 +3,110 @@ Módulo para extracción de datos específicos de manifiestos
 """
 import re
 import logging
+import json
 from difflib import SequenceMatcher
 import unicodedata
 from datetime import datetime
+from pathlib import Path
 from .qr_extractor import extraer_info_qr_manifiesto
 
 # Configurar logging
 logger = logging.getLogger(__name__)
+
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_CACHE_DIR = _BACKEND_DIR / 'cache'
+_CONDUCTORES_CATALOGO_PATH = _CACHE_DIR / 'conductores_catalogo.json'
+
+
+def _quitar_acentos(texto: str) -> str:
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', texto)
+        if unicodedata.category(c) != 'Mn'
+    )
+
+
+def _simplificar_nombre_conductor(nombre: str) -> str:
+    if not isinstance(nombre, str):
+        return ''
+    nombre = _quitar_acentos(nombre)
+    nombre = re.sub(r"[^a-zA-Z\s]", " ", nombre)
+    nombre = ' '.join(nombre.split()).lower()
+    return re.sub(r"[^a-z]", "", nombre)
+
+
+def _cargar_catalogo_conductores() -> list[str]:
+    try:
+        if not _CONDUCTORES_CATALOGO_PATH.exists():
+            return []
+        with _CONDUCTORES_CATALOGO_PATH.open('r', encoding='utf-8') as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            return [x for x in data if isinstance(x, str) and x.strip()]
+        return []
+    except Exception as e:
+        logger.warning(f"No se pudo cargar catálogo de conductores: {e}")
+        return []
+
+
+def _guardar_catalogo_conductores(nombres: list[str]) -> None:
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        nombres_limpios: list[str] = []
+        vistos: set[str] = set()
+        for n in nombres:
+            if not isinstance(n, str):
+                continue
+            n2 = ' '.join(n.split()).strip()
+            if not n2:
+                continue
+            key = _simplificar_nombre_conductor(n2)
+            if key and key in vistos:
+                continue
+            if key:
+                vistos.add(key)
+            nombres_limpios.append(n2)
+        with _CONDUCTORES_CATALOGO_PATH.open('w', encoding='utf-8') as f:
+            json.dump(nombres_limpios, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.warning(f"No se pudo guardar catálogo de conductores: {e}")
+
+
+def corregir_conductor_con_catalogo(nombre_extraido: str, *, auto_agregar: bool = True, umbral: float = 0.88) -> str:
+    if not isinstance(nombre_extraido, str):
+        return nombre_extraido
+    nombre_extraido = ' '.join(nombre_extraido.split()).strip()
+    if not nombre_extraido or nombre_extraido.lower() in {'no encontrado', 'n/a', 'na', 'vacio'}:
+        return nombre_extraido
+
+    catalogo = _cargar_catalogo_conductores()
+    if not catalogo:
+        if auto_agregar:
+            _guardar_catalogo_conductores([nombre_extraido])
+        return nombre_extraido
+
+    base = _simplificar_nombre_conductor(nombre_extraido)
+    if not base:
+        return nombre_extraido
+
+    mejor = None
+    mejor_score = 0.0
+    for canon in catalogo:
+        canon_base = _simplificar_nombre_conductor(canon)
+        if not canon_base:
+            continue
+        score = SequenceMatcher(None, base, canon_base).ratio()
+        if score > mejor_score:
+            mejor_score = score
+            mejor = canon
+
+    if mejor and mejor_score >= umbral:
+        return mejor
+
+    if auto_agregar:
+        catalogo.append(nombre_extraido)
+        _guardar_catalogo_conductores(catalogo)
+    return nombre_extraido
 
 
 def extraer_datos_manifiesto(texto_extraido):
@@ -28,7 +125,7 @@ def extraer_datos_manifiesto(texto_extraido):
     palabraclave3 = r'LOAD\s+ID\s*#\s*(\d+)'
     palabraclave4 = r'\s*CONDUCTOR\s*: (.*)'
     palabraclave5 = r'\s*PLACA\s*:\s*([A-Za-z0-9]+)(?:\s|$)'
-    palabraclave6 = r'\s*6(?!01747000|01252548\d)\d{8}'
+    palabraclave6 = r'\s*60(?!1747000|1252548\d)\d{7}'
     palabraclave7 = r'(?i)\s*REMESA No\.\s*(KBQ[0-9]+)'
     # Expresión regular mejorada: paréntesis opcional y captura más flexible
     palabraclave8 = r'P?\s*[E-e]xp\.\s*(.*?)(?:\s*\(|\s*Dirección|\s*$|\n)'
@@ -50,17 +147,12 @@ def extraer_datos_manifiesto(texto_extraido):
     KBQ = re.findall(palabraclave7, texto_extraido)
     destino = re.findall(palabraclave8, texto_extraido)
     
-    # DEBUG: Mostrar qué está capturando palabraclave8
-    print("\n" + "="*60)
-    print("=== DEBUG palabraclave8 ===")
-    print(f"Expresión regular: {palabraclave8}")
-    print(f"Resultados encontrados: {destino}")
-    print(f"Cantidad de coincidencias: {len(destino)}")
+    
     
     # Mostrar contexto de cada coincidencia
     if destino:
         for i, dest in enumerate(destino):
-            print(f"\n  Destino[{i}]: '{dest}'")
+            
             # Buscar el contexto alrededor de la coincidencia
             matches = list(re.finditer(palabraclave8, texto_extraido))
             if i < len(matches):
@@ -68,10 +160,9 @@ def extraer_datos_manifiesto(texto_extraido):
                 start = max(0, match.start() - 50)
                 end = min(len(texto_extraido), match.end() + 50)
                 contexto = texto_extraido[start:end]
-                print(f"  Contexto[{i}]: ...{contexto}...")
-                print(f"  Posición en texto: {match.start()} - {match.end()}")
+              
     else:
-        print("\n[WARN] No se encontro ningun destino con palabraclave8")
+       
         # Buscar variaciones posibles en el texto
         posibles_variaciones = [
             r'Exp\.',
@@ -81,19 +172,19 @@ def extraer_datos_manifiesto(texto_extraido):
             r'EXP\.',
             r'PEXP\.'
         ]
-        print("\nBuscando variaciones de 'Exp.' en el texto:")
+        
         for var in posibles_variaciones:
             matches = re.findall(var, texto_extraido)
             if matches:
-                print(f"  [OK] Encontrado '{var}': {len(matches)} coincidencias")
+               
                 # Mostrar contexto de las primeras 3
                 matches_iter = list(re.finditer(var, texto_extraido))
                 for j, match in enumerate(matches_iter[:3]):
                     start = max(0, match.start() - 30)
                     end = min(len(texto_extraido), match.end() + 30)
                     contexto = texto_extraido[start:end]
-                    print(f"    [{j}] ...{contexto}...")
-    print("="*60 + "\n")
+                    
+    
     
     # También usar logger para archivos de log
     logger.info(f"palabraclave8 - Expresión: {palabraclave8}, Resultados: {destino}, Cantidad: {len(destino)}")
@@ -124,7 +215,6 @@ def extraer_datos_manifiesto(texto_extraido):
             # Verificar si la frase completa está contenida en el destino
             if frase_omitir in dest_lower:
                 debe_omitir = True
-                print(f"  [SKIP] Omitiendo coincidencia completa: '{dest_limpio}' (contiene frase: '{frase_omitir}')")
                 break
         
         if debe_omitir:
@@ -145,7 +235,6 @@ def extraer_datos_manifiesto(texto_extraido):
         matches_monte = re.findall(patron_monte, texto_extraido)
         if matches_monte:
             destino_procesado.append('Montería')
-            print(f"  [OK] Encontrado 'Monte/Monteria' en texto: {matches_monte}")
             logger.info(f"Destino 'Monte/Montería' encontrado mediante búsqueda alternativa: {matches_monte}")
     
     # Reemplazar la lista original con la procesada
@@ -231,6 +320,10 @@ def extraer_datos_manifiesto(texto_extraido):
     for p in placa_raw:
         if p and p.upper() not in palabras_invalidas and len(p) >= 3:
             placa.append(p)
+
+    # Corregir nombre de conductor usando catálogo persistente (para tolerar errores OCR)
+    if conductor and conductor[0] and conductor[0] != 'No encontrado':
+        conductor[0] = corregir_conductor_con_catalogo(conductor[0])
     
     # Crear diccionario con los datos encontrados
     # Verificar si hay fechas y horas múltiples
@@ -552,6 +645,7 @@ def limpiar_datos(datos):
                     valor_limpio = ' '.join(valor_limpio.split())
                     if valor_limpio:
                         valor_limpio = valor_limpio.title()
+                        valor_limpio = corregir_conductor_con_catalogo(valor_limpio)
                 else:
                     # Normalización profesional de variaciones de "Barranquilla" fuera de 'destino'
                     valor_limpio = reemplazar_barranquilla_profesional(valor_limpio)

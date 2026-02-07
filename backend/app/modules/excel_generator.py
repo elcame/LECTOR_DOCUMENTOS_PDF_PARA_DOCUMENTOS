@@ -4,6 +4,7 @@ Módulo para generación de archivos Excel
 import os
 import pandas as pd
 from datetime import datetime
+from io import BytesIO
 
 
 def crear_excel(lista_archivos_excel, carpeta_original="", username=None):
@@ -104,6 +105,83 @@ def limpiar_excels_anteriores(carpeta_excel):
                 print(f"Archivo Excel eliminado: {archivo}")
     except Exception as e:
         print(f"Error al limpiar archivos Excel: {e}")
+
+
+def crear_excel_en_memoria(lista_archivos_excel, carpeta_original=""):
+    """
+    Crea un archivo Excel en memoria (BytesIO) con los datos de manifiestos procesados.
+    No guarda en disco, retorna bytes para subir a Firebase Storage.
+    
+    Args:
+        lista_archivos_excel (list): Lista de diccionarios con datos de manifiestos
+        carpeta_original (str): Nombre de la carpeta original (opcional)
+    
+    Returns:
+        tuple: (bytes_io, filename) - Buffer de bytes del Excel y nombre del archivo
+               o (None, None) si hay error
+    """
+    if not lista_archivos_excel:
+        print("No hay datos para exportar a Excel")
+        return None, None
+        
+    try:
+        # Definir campos específicos en el orden requerido
+        campos_requeridos = [
+            'placa',
+            'conductor', 
+            'origen',
+            'destino',
+            'fecha inicio',  # FECHA VIAJE
+            'mes',
+            'load_id',  # ID
+            'kof',
+            'remesa',
+            'empresa',
+            'valormanifiesto',  # VALOR FLETE
+            'archivo'  # RUTA DEL ARCHIVO PDF
+        ]
+        
+        # Crear DataFrame con los datos
+        df = pd.DataFrame(lista_archivos_excel)
+        
+        # Filtrar solo los campos requeridos y mantener el orden
+        df_filtrado = df[campos_requeridos]
+        
+        # Renombrar columnas para que coincidan con los nombres deseados
+        df_filtrado = df_filtrado.rename(columns={
+            'fecha inicio': 'FECHA VIAJE',
+            'load_id': 'ID',
+            'valormanifiesto': 'VALOR FLETE',
+            'archivo': 'ARCHIVO PDF'
+        })
+        
+        # Definir nombre del archivo Excel basado en la carpeta
+        if carpeta_original:
+            nombre_excel = f'manifiestos_{carpeta_original}.xlsx'
+        else:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            nombre_excel = f'manifiestos_{timestamp}.xlsx'
+        
+        # Crear buffer en memoria
+        output = BytesIO()
+        
+        # Guardar DataFrame a Excel en memoria
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df_filtrado.to_excel(writer, index=False, sheet_name='Manifiestos')
+        
+        # Obtener bytes
+        output.seek(0)
+        excel_bytes = output.getvalue()
+        
+        print(f"\n[OK] Excel generado en memoria: {nombre_excel} ({len(excel_bytes)} bytes)")
+        
+        return output, nombre_excel
+        
+    except Exception as e:
+        print(f"\n[ERROR] Error al generar Excel en memoria: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, None
 
 
 def obtener_ultimo_excel(carpeta_original="", username=None):

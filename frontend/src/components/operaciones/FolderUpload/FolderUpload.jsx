@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { manifiestosService } from '../../../services/manifiestosService'
 import Button from '../../common/Button/Button'
 import ProcessingResults from '../ProcessingResults/ProcessingResults'
+import BulkRenamePDFs from '../BulkRenamePDFs/BulkRenamePDFs'
 
 /**
  * Componente para subir una carpeta de PDFs y procesarla.
@@ -18,6 +19,7 @@ export default function FolderUpload({ folders = [], loadingFolders = false, onR
   const [lastUploadedFolder, setLastUploadedFolder] = useState(null)
   const [processingResults, setProcessingResults] = useState(null)
   const [showResults, setShowResults] = useState(false)
+  const [showBulkRename, setShowBulkRename] = useState(false)
   const inputRef = useRef(null)
   const inputFilesRef = useRef(null)
 
@@ -29,6 +31,16 @@ export default function FolderUpload({ folders = [], loadingFolders = false, onR
     setFiles(pdfs)
     setError('')
     setSuccessMessage('')
+    
+    // Extraer el nombre de la carpeta del primer archivo
+    if (pdfs.length > 0 && pdfs[0].webkitRelativePath) {
+      const pathParts = pdfs[0].webkitRelativePath.split('/')
+      if (pathParts.length > 1) {
+        const extractedFolderName = pathParts[0].trim().replace(/\.\./g, '').replace(/[/\\]/g, '')
+        setFolderName(extractedFolderName)
+      }
+    }
+    
     if (pdfs.length !== selected.length) {
       setError(`Se omitieron ${selected.length - pdfs.length} archivo(s) que no son PDF.`)
     }
@@ -192,17 +204,42 @@ export default function FolderUpload({ folders = [], loadingFolders = false, onR
                 </p>
               )}
             </div>
-            <Button
-              variant="secondary"
-              onClick={handleProcess}
-              disabled={!canProcess}
-              loading={processing}
-              className="w-full sm:w-auto"
-            >
-              {processing ? 'Procesando...' : `Procesar carpeta${selectedFolderToProcess ? ` "${selectedFolderToProcess}"` : ''}`}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                onClick={handleProcess}
+                disabled={!canProcess}
+                loading={processing}
+                className="flex-1 sm:flex-initial"
+              >
+                {processing ? 'Procesando...' : `Procesar carpeta${selectedFolderToProcess ? ` "${selectedFolderToProcess}"` : ''}`}
+              </Button>
+              {selectedFolderToProcess && (
+                <button
+                  onClick={() => setShowBulkRename(true)}
+                  className="btn btn-outline btn-sm flex items-center gap-2"
+                  title="Renombrar PDFs de esta carpeta"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Renombrar PDFs
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Modal de renombrado masivo */}
+        <BulkRenamePDFs
+          folderName={selectedFolderToProcess}
+          isOpen={showBulkRename}
+          onClose={() => setShowBulkRename(false)}
+          onSuccess={() => {
+            onRefresh?.()
+            setShowBulkRename(false)
+          }}
+        />
 
         {/* Sección: Subir nueva carpeta */}
         <div>
@@ -216,16 +253,18 @@ export default function FolderUpload({ folders = [], loadingFolders = false, onR
             {/* Nombre de carpeta */}
             <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nombre de la carpeta <span className="text-red-500">*</span>
+            Nombre de la carpeta {!folderName && <span className="text-red-500">*</span>}
           </label>
           <input
             type="text"
             value={folderName}
             onChange={(e) => setFolderName(e.target.value)}
-            placeholder="Ej: Viaje_2024_01"
+            placeholder="Se auto-completará al seleccionar carpeta"
             className="input w-full"
           />
-              <p className="text-xs text-gray-500 mt-1">Solo letras, números y guiones. Sin / ni \</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {folderName ? '✓ Nombre detectado automáticamente (puedes editarlo)' : 'Selecciona una carpeta para auto-completar o escribe un nombre'}
+              </p>
             </div>
 
             {/* Selección: carpeta o archivos */}
