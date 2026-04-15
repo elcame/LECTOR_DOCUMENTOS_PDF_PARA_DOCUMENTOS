@@ -344,7 +344,7 @@ def get_current_user_role() -> str:
 
 def is_super_admin() -> bool:
     """True si el usuario actual es super_admin."""
-    return get_current_user_role() == 'super_admin'
+    return get_current_user_role() in ('super_admin', 'admin')
 
 
 def is_admin() -> bool:

@@ -56,7 +56,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    isSuperAdmin: user?.role === 'super_admin',
+    isSuperAdmin: ['super_admin', 'admin'].includes(user?.role),
     isAdmin: ['super_admin', 'empresarial', 'admin'].includes(user?.role),
     isAuthenticated: !!user,
   }

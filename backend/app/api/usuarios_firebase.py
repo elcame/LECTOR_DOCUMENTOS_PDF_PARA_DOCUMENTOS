@@ -92,9 +92,9 @@ def create_usuario():
         if not password:
             return jsonify({'success': False, 'error': 'La contraseña es requerida'}), 400
 
-        # Validar jerarquía: solo super_admin puede crear empresariales / super_admin
+        # Validar jerarquía: solo super_admin (incluye admin legacy) puede crear empresariales / super_admin
         if role_id and role_id in ADMIN_ROLES:
-            if caller_role != 'super_admin':
+            if not is_super_admin():
                 return jsonify({
                     'success': False,
                     'error': 'Solo un super administrador puede crear usuarios empresariales'
@@ -150,7 +150,7 @@ def update_usuario(username):
 
         # empresarial no puede editar a otro empresarial o super_admin
         target_role = target.get('role_id', '')
-        if target_role in ADMIN_ROLES and caller_role != 'super_admin':
+        if target_role in ADMIN_ROLES and not is_super_admin():
             return jsonify({
                 'success': False,
                 'error': 'Solo un super administrador puede editar usuarios empresariales'
@@ -190,7 +190,7 @@ def delete_usuario(username):
         if not target:
             return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
 
-        if target.get('role_id', '') in ADMIN_ROLES and caller_role != 'super_admin':
+        if target.get('role_id', '') in ADMIN_ROLES and not is_super_admin():
             return jsonify({
                 'success': False,
                 'error': 'Solo un super administrador puede eliminar usuarios empresariales'
@@ -218,7 +218,7 @@ def assign_role(username):
         if not role_id:
             return jsonify({'success': False, 'error': 'El role_id es requerido'}), 400
 
-        if role_id in ADMIN_ROLES and caller_role != 'super_admin':
+        if role_id in ADMIN_ROLES and not is_super_admin():
             return jsonify({
                 'success': False,
                 'error': 'Solo super_admin puede asignar roles administrativos'
