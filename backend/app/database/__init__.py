@@ -11,6 +11,8 @@ try:
     from .pagos_repository import PagosRepository
     from .pdfs_repository import PDFsRepository
     from .manifiestos_repository import ManifiestosRepository
+    from .carros_repository import CarrosRepository, PropietariosRepository
+    from .gps_repository import GPSDevicesRepository, GPSLocationsRepository
     
     __all__ = [
         'FirebaseRepository',
@@ -21,7 +23,11 @@ try:
         'GastosRepository',
         'PagosRepository',
         'PDFsRepository',
-        'ManifiestosRepository'
+        'ManifiestosRepository',
+        'CarrosRepository',
+        'PropietariosRepository',
+        'GPSDevicesRepository',
+        'GPSLocationsRepository',
     ]
 except ImportError as e:
     # Si Firebase no está disponible, definir clases vacías

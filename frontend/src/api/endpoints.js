@@ -90,4 +90,27 @@ export const ENDPOINTS = {
     TRIP_EXPENSE_BY_ID: (expenseId) => `/expenses/trip-expenses/${expenseId}`,
     TOTAL_EXPENSES: (manifestId) => `/expenses/trip-expenses/total/${manifestId}`,
   },
+
+  // Carros y propietarios
+  CARROS: {
+    BASE: '/carros',
+    BY_ID: (id) => `/carros/${id}`,
+  },
+  PROPIETARIOS: {
+    BASE: '/propietarios',
+    BY_ID: (id) => `/propietarios/${id}`,
+  },
+
+  // GPS Tracking
+  GPS: {
+    DEVICES: '/gps/devices',
+    DEVICE_BY_IMEI: (imei) => `/gps/devices/${imei}`,
+    LOCATION: (imei) => `/gps/location/${imei}`,
+    LOCATION_ALL: '/gps/location/all',
+    HISTORY: (imei) => `/gps/history/${imei}`,
+    SERVER_STATUS: '/gps/server/status',
+    SERVER_START: '/gps/server/start',
+    SERVER_STOP: '/gps/server/stop',
+    CLEANUP: '/gps/cleanup',
+  },
 }

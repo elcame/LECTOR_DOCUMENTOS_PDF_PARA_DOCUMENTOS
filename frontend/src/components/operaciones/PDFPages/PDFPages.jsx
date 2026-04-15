@@ -39,12 +39,18 @@ export default function PDFPages({ pdf, isOpen, onClose, onPdfUpdated }) {
       setError('')
       const res = await manifiestosService.getPDFPages(pdf.filename, pdf.folder_name)
       if (res.success) {
-        setPages(res.data?.pages || [])
+        const apiPages = res.data?.pages || []
+        if (Array.isArray(apiPages) && apiPages.length > 0) {
+          setPages(apiPages)
+        } else {
+          setPages([])
+          setError('El PDF no contiene páginas (puede estar vacío o dañado).')
+        }
       } else {
-        setError(res.error || 'Error al cargar p?ginas')
+        setError(res.error || 'Error al cargar páginas')
       }
     } catch (err) {
-      setError(err?.message || 'Error al cargar p?ginas')
+      setError(err?.message || 'Error al cargar páginas')
     } finally {
       setLoading(false)
     }
@@ -75,16 +81,16 @@ export default function PDFPages({ pdf, isOpen, onClose, onPdfUpdated }) {
 
   const handleDeletePages = async () => {
     if (selectedPages.length === 0) {
-      alert('Selecciona al menos una p?gina para eliminar')
+      alert('Selecciona al menos una página para eliminar')
       return
     }
 
     if (selectedPages.length >= pages.length) {
-      alert('No puedes eliminar todas las p?ginas del PDF')
+      alert('No puedes eliminar todas las páginas del PDF')
       return
     }
 
-    const confirmMessage = `?Est?s seguro de que deseas eliminar ${selectedPages.length} p?gina(s)?\n\nP?ginas a eliminar: ${selectedPages.sort((a, b) => a - b).join(', ')}\n\nEsta acci?n no se puede deshacer.`
+    const confirmMessage = `¿Estás seguro de que deseas eliminar ${selectedPages.length} página(s)?\n\nPáginas a eliminar: ${selectedPages.sort((a, b) => a - b).join(', ')}\n\nEsta acción no se puede deshacer.`
     
     if (!confirm(confirmMessage)) {
       return
@@ -141,16 +147,16 @@ export default function PDFPages({ pdf, isOpen, onClose, onPdfUpdated }) {
 
   const handleSplitPDF = async () => {
     if (!splitPage) {
-      alert('Selecciona una p?gina para dividir el PDF')
+      alert('Selecciona una página para dividir el PDF')
       return
     }
 
     if (splitPage < 1 || splitPage >= pages.length) {
-      alert(`La p?gina de divisi?n debe estar entre 1 y ${pages.length - 1}`)
+      alert(`La página de división debe estar entre 1 y ${pages.length - 1}`)
       return
     }
 
-    const confirmMessage = `?Est?s seguro de que deseas dividir el PDF en la p?gina ${splitPage}?\n\nSe crear?:\n- Parte 1: P?ginas 1-${splitPage}\n- Parte 2: P?ginas ${splitPage + 1}-${pages.length}\n\n${keepOriginal ? 'El PDF original se mantendr?.' : 'El PDF original ser? eliminado.'}`
+    const confirmMessage = `¿Estás seguro de que deseas dividir el PDF en la página ${splitPage}?\n\nSe creará:\n- Parte 1: Páginas 1-${splitPage}\n- Parte 2: Páginas ${splitPage + 1}-${pages.length}\n\n${keepOriginal ? 'El PDF original se mantendrá.' : 'El PDF original será eliminado.'}`
     
     if (!confirm(confirmMessage)) {
       return
@@ -199,7 +205,7 @@ export default function PDFPages({ pdf, isOpen, onClose, onPdfUpdated }) {
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={`P?ginas de: ${pdf.filename}`}
+        title={`Páginas de: ${pdf.filename}`}
         size="xl"
         closeOnOverlayClick={true}
       >
@@ -214,9 +220,9 @@ export default function PDFPages({ pdf, isOpen, onClose, onPdfUpdated }) {
               {error}
             </div>
           ) : pages.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No se encontraron p?ginas
-            </div>
+              <div className="text-center py-8 text-gray-500">
+                No se encontraron páginas
+              </div>
           ) : (
             <>
               <div className="mb-4 flex items-center justify-between gap-4">
@@ -380,7 +386,7 @@ export default function PDFPages({ pdf, isOpen, onClose, onPdfUpdated }) {
                           : 'border-gray-200 bg-gray-50 hover:border-blue-300'
                         }
                       `}
-                      title={deleteMode ? 'Clic para seleccionar' : 'Clic para ver p?gina completa'}
+                      title={deleteMode ? 'Clic para seleccionar' : 'Clic para ver página completa'}
                     >
                       {splitMode && isSplitPage && (
                         <div className="absolute top-1 right-1 z-10">
@@ -413,7 +419,7 @@ export default function PDFPages({ pdf, isOpen, onClose, onPdfUpdated }) {
                         <div className="w-full h-32 bg-white border border-gray-200 rounded mb-2 overflow-hidden">
                           <img
                             src={thumbnailUrl}
-                            alt={`P?gina ${page.page_number}`}
+                            alt={`Página ${page.page_number}`}
                             className="w-full h-full object-contain"
                             onError={(e) => {
                               e.target.style.display = 'none'
@@ -421,14 +427,14 @@ export default function PDFPages({ pdf, isOpen, onClose, onPdfUpdated }) {
                             }}
                           />
                           <div className="w-full h-full items-center justify-center text-gray-400 text-xs hidden">
-                            P?gina {page.page_number}
+                            Página {page.page_number}
                           </div>
                         </div>
                         <div className="text-xs text-gray-600">
-                          <div className="font-medium">P?gina {page.page_number}</div>
+                          <div className="font-medium">Página {page.page_number}</div>
                           {page.width && page.height && (
                             <div className="text-gray-400 mt-1">
-                              {Math.round(page.width)} ? {Math.round(page.height)}
+                              {Math.round(page.width)} × {Math.round(page.height)}
                             </div>
                           )}
                         </div>

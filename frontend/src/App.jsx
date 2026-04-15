@@ -11,9 +11,11 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Manifiestos from './pages/Manifiestos'
 import Operaciones from './pages/Operaciones'
+import Carros from './pages/Carros'
 import Administrador from './pages/Administrador'
 import Roles from './pages/Roles'
 import UsuariosFirebase from './pages/UsuariosFirebase'
+import GPSTracking from './pages/GPSTracking'
 
 function App() {
   return (
@@ -54,6 +56,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path={ROUTES.CARROS}
+              element={
+                <ProtectedRoute>
+                  <Carros />
+                </ProtectedRoute>
+              }
+            />
             
             {/* Rutas de administración */}
             <Route
@@ -77,6 +87,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <UsuariosFirebase />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.GPS_TRACKING}
+              element={
+                <ProtectedRoute>
+                  <GPSTracking />
                 </ProtectedRoute>
               }
             />

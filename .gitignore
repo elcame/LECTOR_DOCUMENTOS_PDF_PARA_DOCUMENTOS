@@ -24,6 +24,7 @@ yarn-error.log*
 .pnp.js
 frontend/dist/
 frontend/.vite/
+frontend/.firebase/
 
 # Environment
 .env
@@ -31,6 +32,9 @@ frontend/.vite/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Secrets / Credentials (never commit)
+backend/app/config/firebase-credentials.json
 
 # IDE
 .vscode/

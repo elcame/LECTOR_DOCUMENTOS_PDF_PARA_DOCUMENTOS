@@ -126,6 +126,7 @@ def delete_folder(folder_name):
             deleted_count = 0
             errors = []
             
+            # Eliminar archivos del storage
             for pdf in pdfs:
                 try:
                     storage_path = pdf.get('file_path') or (pdf.get('metadata') or {}).get('storage_path')
@@ -134,10 +135,21 @@ def delete_folder(folder_name):
                         if blob.exists():
                             blob.delete()
                     
+                    # Soft delete del PDF
                     repo.delete(pdf['id'])
                     deleted_count += 1
                 except Exception as e:
                     errors.append(f"Error al eliminar {pdf.get('filename')}: {str(e)}")
+            
+            # Hard delete de los manifiestos asociados
+            try:
+                from app.database.manifiestos_repository import ManifiestosRepository
+                manifiestos_repo = ManifiestosRepository()
+                manifestos_deleted, manifestos_errors = manifiestos_repo.hard_delete_by_folder(username, folder_name)
+                deleted_count += manifestos_deleted
+                errors.extend(manifestos_errors)
+            except Exception as e:
+                errors.append(f"Error eliminando manifiestos: {str(e)}")
             
             from modules.database import delete_qr_data_by_carpeta
             try:

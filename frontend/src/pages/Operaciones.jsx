@@ -4,6 +4,7 @@ import FolderUpload from '../components/operaciones/FolderUpload'
 import PDFList from '../components/operaciones/PDFList'
 import StorageStats from '../components/operaciones/StorageStats'
 import ManifiestosTable from '../components/operaciones/ManifiestosTable'
+import SidebarOperaciones from '../componentes/operaciones/SidebarOperaciones'
 
 export default function Operaciones() {
   const [currentFolder, setCurrentFolder] = useState(null)
@@ -13,6 +14,7 @@ export default function Operaciones() {
   const [error, setError] = useState('')
   const [viewMode, setViewMode] = useState('grid') // 'grid' o 'table'
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [activeFolderSection, setActiveFolderSection] = useState(null) // 'procesar' | 'subir' | null
 
   const loadOverview = useCallback(async (folderOverride) => {
     const folder = folderOverride !== undefined ? folderOverride : currentFolder
@@ -53,86 +55,127 @@ export default function Operaciones() {
     setViewMode(prev => prev === 'grid' ? 'table' : 'grid')
   }
 
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Operaciones</h1>
-          <div className="flex items-center gap-3">
-            {/* Botón Ver Tabla */}
-            <button
-              onClick={() => setViewMode('table')}
-              className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline'} btn-sm`}
-              title="Ver tabla de manifiestos"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Ver Tabla
-            </button>
-
-            {/* Botón Ver PDFs */}
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`btn ${viewMode === 'grid' ? 'btn-primary' : 'btn-outline'} btn-sm`}
-              title="Ver lista de PDFs"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-              Ver PDFs
-            </button>
-
-            {/* Botón estadísticas */}
-            <button
-              onClick={() => setShowStats(!showStats)}
-              className={`btn ${showStats ? 'btn-primary' : 'btn-outline'} btn-sm`}
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              {showStats ? 'Ocultar' : 'Ver'} Estadísticas
-            </button>
-          </div>
-        </div>
-        
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
-
-        <div className="space-y-6">
-          {showStats && (
-            loading
-              ? <div className="bg-white rounded-xl shadow p-8 text-center text-gray-500">Cargando estadísticas...</div>
-              : overview
-                ? <StorageStats storage={overview.storage} fromParent={true} onRefresh={handleRefresh} />
-                : null
-          )}
-
-          <FolderUpload
-            folders={overview?.folders ?? []}
-            loadingFolders={loading}
-            onRefresh={handleRefresh}
-            onUploadSuccess={handleUploadSuccess}
-            onProcessSuccess={handleProcessSuccess}
+        <div className="flex gap-6">
+          <SidebarOperaciones
+            viewMode={viewMode}
+            showStats={showStats}
+            onChangeViewMode={setViewMode}
+            onToggleStats={() => setShowStats(!showStats)}
+            onGoToProcesarCarpeta={() => {
+              setActiveFolderSection('procesar')
+              scrollToSection('section-procesar-carpeta')
+            }}
+            onGoToSubirCarpeta={() => {
+              setActiveFolderSection('subir')
+              scrollToSection('section-subir-carpeta')
+            }}
           />
-          
-          {/* Vista de Grid (original) o Tabla */}
-          {viewMode === 'grid' ? (
-            <PDFList
-              pdfs={overview?.pdfs ?? []}
-              folderName={currentFolder}
-              loading={loading}
-              onRefresh={handleRefresh}
-            />
-          ) : (
-            <ManifiestosTable
-              folderName={currentFolder}
-              refreshTrigger={refreshTrigger}
-            />
-          )}
+
+          <div className="flex-1">
+            <header className="mb-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">
+                    Operaciones de manifiestos
+                  </h1>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Procesa, valida y corrige manifiestos generados desde tus PDFs.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    <span>Total PDFs</span>
+                    <span className="font-semibold">
+                      {overview?.pdfs?.length ?? 0}
+                    </span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span>Carpetas</span>
+                    <span className="font-semibold">
+                      {overview?.folders?.length ?? 0}
+                    </span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span>Carpeta activa</span>
+                    <span className="font-semibold">
+                      {currentFolder || 'Todas'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            {error && (
+              <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-6">
+              {showStats && (
+                loading
+                  ? (
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center text-slate-500">
+                      Cargando estadísticas...
+                    </div>
+                  )
+                  : overview
+                    ? (
+                      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                        <StorageStats
+                          storage={overview.storage}
+                          fromParent={true}
+                          onRefresh={handleRefresh}
+                        />
+                      </div>
+                    )
+                    : null
+              )}
+
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
+                <FolderUpload
+                  visibleSection={activeFolderSection}
+                  folders={overview?.folders ?? []}
+                  loadingFolders={loading}
+                  onRefresh={handleRefresh}
+                  onUploadSuccess={handleUploadSuccess}
+                  onProcessSuccess={handleProcessSuccess}
+                />
+              </div>
+              
+              {/* Vista de Grid (original) o Tabla */}
+              {viewMode === 'grid' ? (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                  <PDFList
+                    pdfs={overview?.pdfs ?? []}
+                    folderName={currentFolder}
+                    loading={loading}
+                    onRefresh={handleRefresh}
+                  />
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                  <ManifiestosTable
+                    folderName={currentFolder}
+                    refreshTrigger={refreshTrigger}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

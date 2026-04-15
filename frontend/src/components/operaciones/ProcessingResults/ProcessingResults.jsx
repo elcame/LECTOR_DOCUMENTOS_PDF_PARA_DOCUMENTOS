@@ -8,11 +8,17 @@ import { manifiestosService } from '../../../services/manifiestosService'
 export default function ProcessingResults({ data, folderName, onClose }) {
   const [activeTab, setActiveTab] = useState('summary') // summary, saved, duplicates, errors
   const [manifiestos, setManifiestos] = useState([])
-  const [editingCell, setEditingCell] = useState(null)
-  const [editValue, setEditValue] = useState('')
-  const [saving, setSaving] = useState(false)
 
   if (!data) return null
+
+  // 🔥 DEPURACIÓN: Mostrar qué datos están llegando
+  console.log('🔍 ProcessingResults - Datos recibidos:', {
+    total_manifiestos: data.total_manifiestos,
+    total_procesados: data.total_procesados,
+    manifiestos_count: data.manifiestos?.length || 0,
+    manifiestos_guardados_count: data.manifiestos_guardados?.length || 0,
+    primeros_manifiestos: data.manifiestos?.slice(0, 2)
+  })
 
   const {
     total_manifiestos = 0,

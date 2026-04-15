@@ -120,8 +120,11 @@ def extraer_datos_manifiesto(texto_extraido):
         dict: Diccionario con los datos extraídos
     """
     # Expresiones regulares simples y fáciles de entender
-    palabraclave1 = r'\s*Fecha\s*: (.*)Hora'
-    palabraclave2 = r' Hora\s*: (.*)'
+    # 🔥 MEJORADA: Expresiones más flexibles para fechas
+    palabraclave1 = r'(?i)Fecha\s*:\s*([0-9]{1,2}[\.\/\-][0-9]{1,2}[\.\/\-][0-9]{2,4})'
+    palabraclave1_alt = r'(?i)Fecha\s*:\s*([0-9]{1,2}[\.\/\-][0-9]{1,2}[\.\/\-][0-9]{2,4})\s*(?:a\s*)?([0-9]{1,2}:[0-9]{2})'
+    palabraclave1_simple = r'(?i)Fecha\s*:\s*([^\n\r]*?)(?:\s*Hora|$|\n)'
+    palabraclave2 = r' ?Hora\s*:\s*([0-9]{1,2}:[0-9]{2}(?:\s*[AP]M)?)'
     palabraclave3 = r'LOAD\s+ID\s*#\s*(\d+)'
     palabraclave4 = r'\s*CONDUCTOR\s*: (.*)'
     palabraclave5 = r'\s*PLACA\s*:\s*([A-Za-z0-9]+)(?:\s|$)'
@@ -138,7 +141,36 @@ def extraer_datos_manifiesto(texto_extraido):
     palabraclave_fecha_pago = r'(?i)FECHA\s+(?:DE\s+)?PAGO[:\s]*([^\n]+)'
 
     # Buscar la información en el texto
+    # 🔥 MEJORADA: Búsqueda más flexible para fechas
     fecha = re.findall(palabraclave1, texto_extraido)
+    fecha_alt = re.findall(palabraclave1_alt, texto_extraido)
+    fecha_simple = re.findall(palabraclave1_simple, texto_extraido)
+    
+    # 🔥 DEPURACIÓN: Mostrar qué fechas se encuentran
+    print(f"🔍 DEBUG - Fechas encontradas:")
+    print(f"  - palabraclave1: {fecha}")
+    print(f"  - palabraclave1_simple: {fecha_simple}")
+    
+    # Si no encuentra con el formato específico, intentar con el formato simple
+    if not fecha and fecha_simple:
+        fecha = fecha_simple
+        print(f"  - Usando fecha_simple: {fecha}")
+    
+    # Buscar también otros formatos de fecha comunes
+    if not fecha:
+        # Buscar fechas en formato DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
+        fecha_patterns = [
+            r'([0-9]{1,2}[\.\/\-][0-9]{1,2}[\.\/\-][0-9]{2,4})',
+            r'([0-9]{2}[\.\/\-][0-9]{2}[\.\/\-][0-9]{4})'
+        ]
+        for i, pattern in enumerate(fecha_patterns):
+            fechas_encontradas = re.findall(pattern, texto_extraido)
+            print(f"  - Pattern {i+1} ({pattern}): {fechas_encontradas[:5]}")  # Mostrar primeras 5
+            if fechas_encontradas:
+                fecha = fechas_encontradas[:2]  # Tomar las primeras 2 fechas
+                print(f"  - Usando pattern {i+1}: {fecha}")
+                break
+    
     hora = re.findall(palabraclave2, texto_extraido)
     referencia = re.findall(palabraclave3, texto_extraido)
     conductor = re.findall(palabraclave4, texto_extraido)
@@ -327,12 +359,39 @@ def extraer_datos_manifiesto(texto_extraido):
     
     # Crear diccionario con los datos encontrados
     # Verificar si hay fechas y horas múltiples
+    # 🔥 MEJORADA: Validación y limpieza de fechas
+    def limpiar_fecha(fecha_str):
+        """Limpia y valida una fecha extraída"""
+        if not fecha_str or fecha_str == 'No encontrada':
+            return 'No encontrada'
+        
+        # Limpiar espacios y caracteres extraños
+        fecha_str = str(fecha_str).strip()
+        
+        # Validar formato básico de fecha
+        import re
+        # Patrones de fecha válidos
+        patrones_validos = [
+            r'^[0-9]{1,2}[\.\/\-][0-9]{1,2}[\.\/\-][0-9]{2,4}$',  # DD.MM.YYYY, DD/MM/YYYY, DD-MM-YYYY
+            r'^[0-9]{4}[\.\/\-][0-9]{1,2}[\.\/\-][0-9]{1,2}$',  # YYYY-MM-DD, YYYY/MM/DD
+        ]
+        
+        for patron in patrones_validos:
+            if re.match(patron, fecha_str):
+                return fecha_str
+        
+        return 'No encontrada'
+    
     if len(fecha) >= 2:
-        fecha_inicio = fecha[0]
-        fecha_retorno = fecha[1]
+        fecha_inicio = limpiar_fecha(fecha[0])
+        fecha_retorno = limpiar_fecha(fecha[1])
     else:
-        fecha_inicio = fecha[0] if fecha else 'No encontrada'
+        fecha_inicio = limpiar_fecha(fecha[0]) if fecha else 'No encontrada'
         fecha_retorno = 'No encontrada'
+    
+    print(f"🔍 DEBUG - Fechas limpias:")
+    print(f"  - fecha_inicio: {fecha_inicio}")
+    print(f"  - fecha_retorno: {fecha_retorno}")
     
     if len(hora) >= 2:
         hora_inicio = hora[0]
@@ -513,9 +572,9 @@ def extraer_datos_factura_electronica(texto_extraido):
         valormanifiesto = 1600000
     else:
         if len(KOF) < 2:
-            valormanifiesto = 250000
+            valormanifiesto = 340000
         else:
-            valormanifiesto = 280000
+            valormanifiesto = 340000
     
     factura_electronica = {
         'fecha Generacion': "vacio",

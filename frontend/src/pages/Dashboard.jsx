@@ -29,6 +29,18 @@ export default function Dashboard() {
               >
                 📊 Operaciones
               </Link>
+              <Link
+                to="/carros"
+                className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900"
+              >
+                🚚 Carros
+              </Link>
+              <Link
+                to="/gps"
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+              >
+                📍 GPS
+              </Link>
               {isAdmin && (
                 <Link
                   to="/administrador"
@@ -77,6 +89,26 @@ export default function Dashboard() {
                 <h3 className="text-xl font-semibold mb-2">📊 Operaciones</h3>
                 <p className="text-gray-600">
                   Visualiza y analiza tus operaciones
+                </p>
+              </Link>
+
+              <Link
+                to="/carros"
+                className="card hover:shadow-lg transition-shadow"
+              >
+                <h3 className="text-xl font-semibold mb-2">🚚 Carros</h3>
+                <p className="text-gray-600">
+                  Gestiona vehículos y propietarios vinculados a manifiestos
+                </p>
+              </Link>
+
+              <Link
+                to="/gps"
+                className="card hover:shadow-lg transition-shadow"
+              >
+                <h3 className="text-xl font-semibold mb-2">📍 GPS Tracking</h3>
+                <p className="text-gray-600">
+                  Rastreo en tiempo real de vehículos
                 </p>
               </Link>
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import PDFItem from '../PDFItem/PDFItem'
 import PDFMerger from '../PDFMerger/PDFMerger'
 import PDFPages from '../PDFPages/PDFPages'
+import { manifiestosService } from '../../../services/manifiestosService'
 
 export default function PDFList({ pdfs = [], folderName = null, loading = false, onRefresh }) {
   const [filteredPdfs, setFilteredPdfs] = useState([])
@@ -40,6 +41,12 @@ export default function PDFList({ pdfs = [], folderName = null, loading = false,
 
   const handleSelectPdf = (pdf) => {
     setSelectedPdf(pdf)
+  }
+
+  const handleOpenPdfInNewTab = (pdf) => {
+    if (!pdf?.filename || !pdf?.folder_name) return
+    const url = manifiestosService.getPDFViewUrl(pdf.filename, pdf.folder_name)
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const handleMergeSuccess = () => {
@@ -226,10 +233,10 @@ export default function PDFList({ pdfs = [], folderName = null, loading = false,
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <button
-                      onClick={() => handleSelectPdf(pdf)}
+                      onClick={() => handleOpenPdfInNewTab(pdf)}
                       className="text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      Ver detalles
+                      Abrir PDF
                     </button>
                   </td>
                 </tr>

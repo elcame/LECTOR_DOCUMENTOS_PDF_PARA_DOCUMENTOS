@@ -51,6 +51,9 @@ def create_app(config_class=Config):
     from app.api.manifiestos_processing import bp as manifiestos_processing_bp
     from app.api.manifiestos_qr import bp as manifiestos_qr_bp
     from app.api.manifiestos_pdf_ops import bp as manifiestos_pdf_ops_bp
+    from app.api.carros import bp as carros_bp
+    from app.api.ingresos_detalle import bp as ingresos_detalle_bp  # 🔥 NUEVO
+    from app.api.gps import bp as gps_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(usuarios_bp, url_prefix='/api/usuarios')
@@ -67,5 +70,8 @@ def create_app(config_class=Config):
     app.register_blueprint(manifiestos_processing_bp, url_prefix='/api/manifiestos')
     app.register_blueprint(manifiestos_qr_bp, url_prefix='/api/manifiestos')
     app.register_blueprint(manifiestos_pdf_ops_bp, url_prefix='/api/manifiestos')
+    app.register_blueprint(carros_bp, url_prefix='/api')
+    app.register_blueprint(ingresos_detalle_bp, url_prefix='/api/ingresos')  # 🔥 NUEVO
+    app.register_blueprint(gps_bp, url_prefix='/api/gps')
     
     return app

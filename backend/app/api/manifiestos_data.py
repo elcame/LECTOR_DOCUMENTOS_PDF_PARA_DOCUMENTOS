@@ -187,3 +187,114 @@ def get_conductores():
             return jsonify({'success': False, 'error': 'Firebase no está disponible'}), 503
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/placas', methods=['GET'])
+@login_required_api
+def get_placas():
+    """
+    API para obtener lista única de placas de los manifiestos del usuario.
+    Útil para autocompletar o para importar carros desde manifiestos.
+    """
+    try:
+        username = get_current_user()
+        if not username:
+            return jsonify({'success': False, 'error': 'Usuario no autenticado'}), 401
+        
+        try:
+            from app.database.manifiestos_repository import ManifiestosRepository
+            repo = ManifiestosRepository()
+            
+            filters = [('username', '==', username), ('active', '==', True)]
+            manifiestos = repo.get_all(filters=filters)
+            
+            placas = set()
+            for m in manifiestos:
+                placa = m.get('placa')
+                if placa and placa != 'No encontrada' and placa.strip():
+                    # Normalizar placa (mayúsculas, sin espacios)
+                    placa_normalizada = placa.strip().upper()
+                    # Validar que sea una placa razonable (mínimo 3 caracteres, alfanumérica)
+                    if len(placa_normalizada) >= 3 and placa_normalizada.replace('-', '').replace('_', '').isalnum():
+                        placas.add(placa_normalizada)
+            
+            placas_list = sorted(list(placas))
+            
+            return jsonify({
+                'success': True,
+                'placas': placas_list,
+                'count': len(placas_list)
+            })
+        except ImportError:
+            return jsonify({'success': False, 'error': 'Firebase no está disponible'}), 503
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/stats', methods=['GET'])
+@login_required_api
+def get_manifiestos_stats():
+    """
+    API para obtener estadísticas de manifiestos para gráficos de rendimiento.
+    Incluye métricas financieras (valormanifiesto) y temporales (tiempos entre viajes).
+    """
+    try:
+        username = get_current_user()
+        if not username:
+            return jsonify({'success': False, 'error': 'Usuario no autenticado'}), 401
+        
+        period = request.args.get('period', 'daily')
+        days = int(request.args.get('days', 30))
+        
+        try:
+            from app.database.manifiestos_repository import ManifiestosRepository
+            repo = ManifiestosRepository()
+            
+            # Obtener estadísticas
+            stats, ingresos_por_dia_semana = repo.get_stats_by_period(username, period, days)
+            ingresos_destino = repo.get_ingresos_by_destino(username, period, days)
+            ingresos_conductor = repo.get_ingresos_by_conductor(username, period, days)
+            distribucion_valores = repo.get_distribucion_valores(username)
+            tiempos_viajes = repo.get_tiempos_entre_viajes(username, period, days)
+            tiempos_conductor = repo.get_tiempos_por_conductor(username, period, days)
+            patrones_temporales = repo.get_patrones_temporales(username, period, days)
+            analisis_comparativo = repo.get_analisis_comparativo(username, days)
+            
+            # Calcular resumen
+            total_ingresos = sum(item['total'] for item in stats) if stats else 0
+            total_manifiestos = sum(item['count'] for item in stats) if stats else 0
+            valor_promedio = total_ingresos / total_manifiestos if total_manifiestos > 0 else 0
+            tiempo_promedio = sum(item['tiempo_promedio_hs'] for item in tiempos_conductor) / len(tiempos_conductor) if tiempos_conductor else 0
+            
+            mejor_dia = max(stats, key=lambda x: x['total'])['date'] if stats else None
+            mejor_destino = max(ingresos_destino, key=lambda x: x['total'])['destino'] if ingresos_destino else None
+            conductor_mas_rapido = min(tiempos_conductor, key=lambda x: x['tiempo_promedio_hs'])['conductor'] if tiempos_conductor else None
+            
+            return jsonify({
+                'success': True,
+                'period': period,
+                'data': {
+                    'ingresos_por_fecha': stats,
+                    'ingresos_por_dia_semana': ingresos_por_dia_semana,
+                    'ingresos_por_destino': ingresos_destino,
+                    'ingresos_por_conductor': ingresos_conductor,
+                    'distribucion_valores': distribucion_valores,
+                    'tiempos_entre_viajes': tiempos_viajes,
+                    'tiempos_por_conductor': tiempos_conductor,
+                    'patrones_temporales': patrones_temporales,
+                    'analisis_comparativo': analisis_comparativo,
+                    'summary': {
+                        'total_ingresos': total_ingresos,
+                        'total_manifiestos': total_manifiestos,
+                        'valor_promedio': valor_promedio,
+                        'tiempo_promedio_entre_viajes': tiempo_promedio,
+                        'mejor_dia': mejor_dia,
+                        'mejor_destino': mejor_destino,
+                        'conductor_mas_rapido': conductor_mas_rapido
+                    }
+                }
+            })
+        except ImportError:
+            return jsonify({'success': False, 'error': 'Firebase no está disponible'}), 503
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

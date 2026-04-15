@@ -28,30 +28,42 @@ class FirebaseConfig:
             return
         
         try:
-            # Leer project_id de las credenciales si está disponible
-            if credentials_path and os.path.exists(credentials_path):
-                import json
-                with open(credentials_path, 'r') as f:
-                    cred_data = json.load(f)
-                    project_id = project_id or cred_data.get('project_id')
-                    # Si no se proporciona storage_bucket, usar el por defecto
-                    if not storage_bucket and project_id:
-                        storage_bucket = f"{project_id}.appspot.com"
-            
-            if credentials_path and os.path.exists(credentials_path):
-                # Usar archivo de credenciales
-                cred = credentials.Certificate(credentials_path)
-                app_options = {'projectId': project_id} if project_id else {}
+            import json
+
+            credentials_json_env = os.environ.get("FIREBASE_CREDENTIALS_JSON")
+            if credentials_path is None:
+                credentials_path = os.environ.get("FIREBASE_CREDENTIALS_PATH") or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+
+            cred_data = None
+            if credentials_json_env:
+                cred_data = json.loads(credentials_json_env)
+                project_id = project_id or cred_data.get("project_id")
+                if not storage_bucket and project_id:
+                    storage_bucket = f"{project_id}.appspot.com"
+
+                cred = credentials.Certificate(cred_data)
+                app_options = {"projectId": project_id} if project_id else {}
                 if storage_bucket:
-                    app_options['storageBucket'] = storage_bucket
+                    app_options["storageBucket"] = storage_bucket
+                firebase_admin.initialize_app(cred, app_options if app_options else None)
+            elif credentials_path and os.path.exists(credentials_path):
+                with open(credentials_path, "r", encoding="utf-8") as f:
+                    cred_data = json.load(f)
+                project_id = project_id or cred_data.get("project_id")
+                if not storage_bucket and project_id:
+                    storage_bucket = f"{project_id}.appspot.com"
+
+                cred = credentials.Certificate(credentials_path)
+                app_options = {"projectId": project_id} if project_id else {}
+                if storage_bucket:
+                    app_options["storageBucket"] = storage_bucket
                 firebase_admin.initialize_app(cred, app_options if app_options else None)
             else:
-                # Usar credenciales por defecto (variables de entorno o Application Default Credentials)
                 app_options = {}
                 if project_id:
-                    app_options['projectId'] = project_id
+                    app_options["projectId"] = project_id
                 if storage_bucket:
-                    app_options['storageBucket'] = storage_bucket
+                    app_options["storageBucket"] = storage_bucket
                 firebase_admin.initialize_app(app_options if app_options else None)
             
             cls._db = firestore.client()

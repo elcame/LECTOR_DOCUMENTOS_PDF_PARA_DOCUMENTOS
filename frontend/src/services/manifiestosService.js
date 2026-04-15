@@ -162,6 +162,16 @@ export const manifiestosService = {
   },
 
   /**
+   * Obtener URL para abrir/ver un PDF completo en el navegador.
+   * Se apoya en el endpoint de descarga, pasando el folder_name como query.
+   */
+  getPDFViewUrl(filename, folderName) {
+    const baseURL = api.defaults.baseURL || window.location.origin
+    const params = new URLSearchParams({ folder_name: folderName })
+    return `${baseURL}${ENDPOINTS.MANIFIESTOS.PDF_DOWNLOAD(filename)}?${params.toString()}`
+  },
+
+  /**
    * Descargar un PDF completo
    * @param {string} filename - Nombre del archivo PDF
    * @param {string} folderName - Nombre de la carpeta
@@ -344,6 +354,60 @@ export const manifiestosService = {
     // Agregar timestamp para evitar caché del navegador
     params._t = Date.now()
     const response = await api.get(ENDPOINTS.MANIFIESTOS.MANIFIESTOS_DATA, { params })
+    return response.data
+  },
+
+  /**
+   * Obtener lista única de conductores de los manifiestos
+   * @returns {Promise<Object>} Lista de conductores únicos
+   */
+  async getConductores() {
+    const response = await api.get('/manifiestos/conductores')
+    return response.data
+  },
+
+  /**
+   * Obtener lista única de placas de los manifiestos
+   * @returns {Promise<Object>} Lista de placas únicas
+   */
+  async getPlacas() {
+    const response = await api.get('/manifiestos/placas')
+    return response.data
+  },
+
+  /**
+   * Obtener estadísticas de manifiestos para gráficos de rendimiento
+   * @param {string} period - Período: 'daily', 'weekly', 'monthly'
+   * @param {number} days - Días a considerar (default: 30)
+   * @returns {Promise<Object>} Estadísticas de ingresos y tiempos
+   */
+  async getManifiestosStats(period = 'daily', days = 30) {
+    const params = { period, days }
+    const response = await api.get('/manifiestos/stats', { params })
+    return response.data
+  },
+
+  /**
+   * 🔥 NUEVO: Obtener ingresos detallados por conductor con fechas específicas
+   * @param {string} period - Período: 'daily', 'weekly', 'monthly'
+   * @param {number} days - Días a considerar (default: 30)
+   * @returns {Promise<Object>} Ingresos por conductor con detalles
+   */
+  async getIngresosByConductor(period = 'daily', days = 30) {
+    const params = { period, days }
+    const response = await api.get('/ingresos/conductor', { params })
+    return response.data
+  },
+
+  /**
+   * 🔥 NUEVO: Obtener ingresos detallados por carro (placa) con fechas específicas
+   * @param {string} period - Período: 'daily', 'weekly', 'monthly'
+   * @param {number} days - Días a considerar (default: 30)
+   * @returns {Promise<Object>} Ingresos por carro con detalles
+   */
+  async getIngresosByCarro(period = 'daily', days = 30) {
+    const params = { period, days }
+    const response = await api.get('/ingresos/carro', { params })
     return response.data
   },
 }

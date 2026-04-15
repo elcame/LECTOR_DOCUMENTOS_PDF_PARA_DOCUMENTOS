@@ -237,6 +237,12 @@ def process_folder():
         
         manifiestos_para_excel = [manifiestos[i] for i in indices_guardados]
         
+        # 🔥 CORRECCIÓN: Enviar todos los datos completos de los manifiestos guardados
+        manifiestos_completos_guardados = []
+        for i in indices_guardados:
+            if i < len(manifiestos):
+                manifiestos_completos_guardados.append(manifiestos[i])
+        
         excel_url = None
         excel_storage_path = None
         if manifiestos_para_excel:
@@ -285,7 +291,7 @@ def process_folder():
             'success': True,
             'message': f'Procesados {total_guardados} manifiesto(s). {total_duplicados} duplicado(s) detectado(s).',
             'data': {
-                'manifiestos': manifiestos_para_excel,
+                'manifiestos': manifiestos_completos_guardados,  # 🔥 CORRECCIÓN: Datos completos
                 'facturas_electronicas': facturas_electronicas,
                 'excel_url': excel_url,
                 'excel_storage_path': excel_storage_path,

@@ -4,10 +4,11 @@ import ExpenseTypesTable from '../components/manifiestos/ExpenseTypesTable'
 import TripExpensesTable from '../components/manifiestos/TripExpensesTable'
 import ManifestSelector from '../components/manifiestos/ManifestSelector'
 import AdvancePayment from '../components/manifiestos/AdvancePayment'
+import ManifiestosCharts from '../components/charts/ManifiestosCharts'
 import Loading from '../components/common/Loading/Loading'
 
 export default function Manifiestos() {
-  const [activeTab, setActiveTab] = useState('expenses') // 'expenses', 'types', 'advance'
+  const [activeTab, setActiveTab] = useState('stats') // 'stats', 'expenses', 'types', 'advance'
   const [selectedManifest, setSelectedManifest] = useState(null)
   const [manifests, setManifests] = useState([])
   const [loading, setLoading] = useState(true)
@@ -71,6 +72,16 @@ export default function Manifiestos() {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
               <button
+                onClick={() => setActiveTab('stats')}
+                className={`${
+                  activeTab === 'stats'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+              >
+                📊 Estadísticas
+              </button>
+              <button
                 onClick={() => setActiveTab('expenses')}
                 className={`${
                   activeTab === 'expenses'
@@ -115,6 +126,12 @@ export default function Manifiestos() {
             </div>
           ) : (
             <>
+              {activeTab === 'stats' && (
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                  <ManifiestosCharts />
+                </div>
+              )}
+
               {activeTab === 'expenses' && (
                 <TripExpensesTable
                   manifest={selectedManifest}
