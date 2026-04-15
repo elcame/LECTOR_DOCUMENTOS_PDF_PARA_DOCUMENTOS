@@ -4,11 +4,69 @@ Repositorio para operaciones con roles en Firebase
 from typing import Optional, Dict, List
 from .firebase_repository import FirebaseRepository
 
+DEFAULT_ROLES = {
+    'super_admin': {
+        'role_name': 'super_admin',
+        'description': 'Super Administrador con acceso total al sistema',
+        'permissions': [
+            'users.create', 'users.read', 'users.update', 'users.delete',
+            'roles.create', 'roles.read', 'roles.update', 'roles.delete',
+            'manifiestos.read', 'manifiestos.write', 'manifiestos.delete',
+            'operaciones.read', 'operaciones.write',
+            'carros.read', 'carros.write', 'carros.delete',
+            'gastos.read', 'gastos.write',
+            'gps.read', 'gps.write',
+            'admin.panel',
+        ],
+        'active': True,
+    },
+    'empresarial': {
+        'role_name': 'empresarial',
+        'description': 'Usuario empresarial con permisos administrativos operativos',
+        'permissions': [
+            'users.read', 'users.create_conductor', 'users.update_conductor',
+            'roles.read',
+            'manifiestos.read', 'manifiestos.write', 'manifiestos.delete',
+            'operaciones.read', 'operaciones.write',
+            'carros.read', 'carros.write', 'carros.delete',
+            'gastos.read', 'gastos.write',
+            'gps.read', 'gps.write',
+            'admin.panel',
+        ],
+        'active': True,
+    },
+    'conductor': {
+        'role_name': 'conductor',
+        'description': 'Conductor asociado a un vehículo',
+        'permissions': [
+            'manifiestos.read',
+            'carros.read',
+            'gastos.read',
+            'gps.read',
+        ],
+        'active': True,
+    },
+}
+
+ADMIN_ROLES = ('super_admin', 'empresarial')
+
+
 class RolesRepository(FirebaseRepository):
     """Repositorio para gestión de roles"""
     
     def __init__(self):
         super().__init__('roles')
+
+    def seed_default_roles(self) -> None:
+        """Crea los roles predeterminados en Firestore si no existen."""
+        for role_key, role_data in DEFAULT_ROLES.items():
+            existing = self.get_role_by_name(role_key)
+            if not existing:
+                try:
+                    self.create(dict(role_data), doc_id=role_key)
+                    print(f"[SEED] Rol '{role_key}' creado")
+                except Exception as e:
+                    print(f"[SEED] Error al crear rol '{role_key}': {e}")
     
     def create_role(self, role_name: str, description: str = '', permissions: List[str] = None) -> bool:
         """

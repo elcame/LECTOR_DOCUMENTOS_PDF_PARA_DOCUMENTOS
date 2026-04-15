@@ -78,7 +78,9 @@ export const ENDPOINTS = {
     BASE: '/usuarios-firebase',
     BY_USERNAME: (username) => `/usuarios-firebase/${username}`,
     ROLE: (username) => `/usuarios-firebase/${username}/role`,
+    CARRO: (username) => `/usuarios-firebase/${username}/carro`,
     BY_ROLE: (roleId) => `/usuarios-firebase/by-role/${roleId}`,
+    CONDUCTORES_WITH_CARROS: '/usuarios-firebase/conductores-with-carros',
   },
   
   // Gastos de viaje y tipos de gastos

@@ -11,8 +11,9 @@ class UsuariosRepository(FirebaseRepository):
     def __init__(self):
         super().__init__('usuarios')
     
-    def create_usuario(self, username: str, email: str, password_hash: str, 
-                      full_name: str = '', role_id: str = None, active: bool = True) -> bool:
+    def create_usuario(self, username: str, email: str, password_hash: str,
+                      full_name: str = '', role_id: str = None, active: bool = True,
+                      carro_id: str = None) -> bool:
         """
         Crea un nuevo usuario
         
@@ -39,6 +40,7 @@ class UsuariosRepository(FirebaseRepository):
                 'password_hash': password_hash,
                 'full_name': full_name,
                 'role_id': role_id,
+                'carro_id': carro_id,
                 'active': active,
                 'created_at': self._get_timestamp(),
                 'last_login': None
@@ -186,6 +188,29 @@ class UsuariosRepository(FirebaseRepository):
             print(f"Error al obtener usuarios por rol: {e}")
             return []
     
+    def assign_carro(self, username: str, carro_id: str) -> bool:
+        """Asocia un carro a un usuario conductor."""
+        return self.update_usuario(username, {'carro_id': carro_id})
+
+    def get_conductores_with_carros(self) -> List[Dict]:
+        """Devuelve todos los conductores activos con datos del carro asociado."""
+        try:
+            conductores = self.get_usuarios_by_role('conductor')
+            from .carros_repository import CarrosRepository
+            carros_repo = CarrosRepository()
+            for c in conductores:
+                carro_id = c.get('carro_id')
+                if carro_id:
+                    carro = carros_repo.get_by_id(carro_id)
+                    c['carro'] = carro
+                else:
+                    c['carro'] = None
+                c.pop('password_hash', None)
+            return conductores
+        except Exception as e:
+            print(f"Error al obtener conductores con carros: {e}")
+            return []
+
     def _get_timestamp(self) -> str:
         """Obtiene timestamp actual en formato ISO"""
         from datetime import datetime

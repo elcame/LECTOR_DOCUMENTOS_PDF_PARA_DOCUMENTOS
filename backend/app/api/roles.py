@@ -11,32 +11,24 @@ ROOT_DIR = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 try:
-    from modules.auth import is_authenticated, is_admin, get_current_user
+    from modules.auth import is_authenticated, is_admin, get_current_user, admin_required, super_admin_required
     from app.database.roles_repository import RolesRepository
 except ImportError as e:
     print(f"Advertencia: Error al importar módulos en roles.py: {e}")
 
 bp = Blueprint('roles', __name__)
 
-def login_required_api(f):
-    """Decorador para APIs que requieren autenticación"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not is_authenticated():
-            return jsonify({'success': False, 'error': 'No autenticado'}), 401
-        return f(*args, **kwargs)
-    return decorated_function
 
-def admin_required_api(f):
-    """Decorador para APIs que requieren rol de administrador"""
+def login_required_api(f):
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated(*args, **kwargs):
         if not is_authenticated():
             return jsonify({'success': False, 'error': 'No autenticado'}), 401
-        if not is_admin():
-            return jsonify({'success': False, 'error': 'Se requiere rol de administrador'}), 403
         return f(*args, **kwargs)
-    return decorated_function
+    return decorated
+
+
+admin_required_api = admin_required
 
 @bp.route('', methods=['GET'])
 @login_required_api

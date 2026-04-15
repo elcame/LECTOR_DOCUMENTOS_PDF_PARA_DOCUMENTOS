@@ -314,53 +314,69 @@ def get_user_info(username: str) -> Optional[Dict]:
 
 def get_current_user_role() -> str:
     """
-    Obtiene el rol del usuario actual (usa Firebase)
-    
+    Obtiene el rol del usuario actual (usa Firebase).
+
     Returns:
-        str: Rol del usuario ('admin' o 'conductor'), 'conductor' por defecto
+        str: 'super_admin' | 'empresarial' | 'conductor' (por defecto)
     """
     username = get_current_user()
     if not username:
         return 'conductor'
-    
+
     try:
-        # Intentar usar Firebase primero
         from app.database.usuarios_repository import UsuariosRepository
         from app.database.roles_repository import RolesRepository
-        
+
         repo = UsuariosRepository()
         usuario = repo.get_usuario_by_username(username)
-        
+
         if usuario and usuario.get('role_id'):
             roles_repo = RolesRepository()
             role = roles_repo.get_by_id(usuario.get('role_id'))
             if role:
                 return role.get('role_name', 'conductor')
-        
-        # Fallback a base de datos local si Firebase no está disponible
+
         return db_get_user_role(username)
     except Exception as e:
         print(f"Error al obtener rol desde Firebase: {e}")
-        # Fallback a base de datos local
         return db_get_user_role(username)
 
 
+def is_super_admin() -> bool:
+    """True si el usuario actual es super_admin."""
+    return get_current_user_role() == 'super_admin'
+
+
 def is_admin() -> bool:
-    """
-    Verifica si el usuario actual es administrador (usa Firebase)
-    
-    Returns:
-        bool: True si es admin, False en caso contrario
-    """
-    return get_current_user_role() == 'admin'
+    """True si el usuario es super_admin o empresarial (roles administrativos)."""
+    return get_current_user_role() in ('super_admin', 'empresarial', 'admin')
 
 
 def is_conductor() -> bool:
-    """
-    Verifica si el usuario actual es conductor
-    
-    Returns:
-        bool: True si es conductor, False en caso contrario
-    """
+    """True si el usuario actual es conductor."""
     return get_current_user_role() == 'conductor'
+
+
+def super_admin_required(f):
+    """Decorador para endpoints que requieren super_admin."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not is_authenticated():
+            return jsonify({'success': False, 'error': 'No autenticado'}), 401
+        if not is_super_admin():
+            return jsonify({'success': False, 'error': 'Se requiere rol de super administrador'}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
+def admin_required(f):
+    """Decorador para endpoints que requieren super_admin o empresarial."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not is_authenticated():
+            return jsonify({'success': False, 'error': 'No autenticado'}), 401
+        if not is_admin():
+            return jsonify({'success': False, 'error': 'Se requiere rol de administrador'}), 403
+        return f(*args, **kwargs)
+    return decorated
 

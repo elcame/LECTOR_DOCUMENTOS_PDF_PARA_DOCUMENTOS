@@ -5,77 +5,70 @@ import api from '../api'
 import { ENDPOINTS } from '../api/endpoints'
 
 export const adminService = {
-  /**
-   * Obtener lista de conductores desde manifiestos
-   */
   async getConductores() {
     const response = await api.get('/manifiestos/conductores')
     return response.data
   },
 
-  /**
-   * Obtener todos los usuarios
-   */
   async getUsuarios() {
-    const response = await api.get(ENDPOINTS.USUARIOS_FIREBASE)
+    const response = await api.get(ENDPOINTS.USUARIOS_FIREBASE.BASE)
     return response.data
   },
 
-  /**
-   * Crear nuevo usuario
-   */
   async createUsuario(userData) {
-    const response = await api.post(ENDPOINTS.USUARIOS_FIREBASE, userData)
+    const response = await api.post(ENDPOINTS.USUARIOS_FIREBASE.BASE, userData)
     return response.data
   },
 
-  /**
-   * Actualizar usuario existente
-   */
-  async updateUsuario(userId, userData) {
-    const response = await api.put(`${ENDPOINTS.USUARIOS_FIREBASE}/${userId}`, userData)
+  async updateUsuario(username, userData) {
+    const response = await api.put(ENDPOINTS.USUARIOS_FIREBASE.BY_USERNAME(username), userData)
     return response.data
   },
 
-  /**
-   * Eliminar usuario
-   */
-  async deleteUsuario(userId) {
-    const response = await api.delete(`${ENDPOINTS.USUARIOS_FIREBASE}/${userId}`)
+  async deleteUsuario(username) {
+    const response = await api.delete(ENDPOINTS.USUARIOS_FIREBASE.BY_USERNAME(username))
     return response.data
   },
 
-  /**
-   * Obtener todos los roles
-   */
+  async assignRole(username, roleId) {
+    const response = await api.put(ENDPOINTS.USUARIOS_FIREBASE.ROLE(username), { role_id: roleId })
+    return response.data
+  },
+
+  async assignCarro(username, carroId) {
+    const response = await api.put(ENDPOINTS.USUARIOS_FIREBASE.CARRO(username), { carro_id: carroId })
+    return response.data
+  },
+
+  async getConductoresWithCarros() {
+    const response = await api.get(ENDPOINTS.USUARIOS_FIREBASE.CONDUCTORES_WITH_CARROS)
+    return response.data
+  },
+
   async getRoles() {
-    const response = await api.get(ENDPOINTS.ROLES)
+    const response = await api.get(ENDPOINTS.ROLES.BASE)
     return response.data
   },
 
-  /**
-   * Crear nuevo rol
-   */
   async createRol(rolData) {
-    const response = await api.post(ENDPOINTS.ROLES, rolData)
+    const response = await api.post(ENDPOINTS.ROLES.BASE, rolData)
     return response.data
   },
 
-  /**
-   * Actualizar rol
-   */
-  async updateRol(rolId, rolData) {
-    const response = await api.put(`${ENDPOINTS.ROLES}/${rolId}`, rolData)
+  async updateRol(rolName, rolData) {
+    const response = await api.put(ENDPOINTS.ROLES.BY_NAME(rolName), rolData)
     return response.data
   },
 
-  /**
-   * Eliminar rol
-   */
-  async deleteRol(rolId) {
-    const response = await api.delete(`${ENDPOINTS.ROLES}/${rolId}`)
+  async deleteRol(rolName) {
+    const response = await api.delete(ENDPOINTS.ROLES.BY_NAME(rolName))
     return response.data
-  }
+  },
+
+  async getCarrosDisponibles() {
+    const response = await api.get(ENDPOINTS.CARROS.BASE)
+    return response.data
+  },
 }
 
 export default adminService

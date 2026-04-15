@@ -1,8 +1,14 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Dashboard() {
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -50,14 +56,14 @@ export default function Dashboard() {
                 </Link>
               )}
               <span className="text-sm text-gray-600">
-                {user?.username}
+                {user?.username} <span className="text-xs text-gray-400">({user?.role})</span>
               </span>
-              <Link
-                to="/logout"
+              <button
+                onClick={handleLogout}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
               >
-                🚪 Salir
-              </Link>
+                Salir
+              </button>
             </div>
           </div>
         </div>

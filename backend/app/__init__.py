@@ -73,5 +73,13 @@ def create_app(config_class=Config):
     app.register_blueprint(carros_bp, url_prefix='/api')
     app.register_blueprint(ingresos_detalle_bp, url_prefix='/api/ingresos')  # 🔥 NUEVO
     app.register_blueprint(gps_bp, url_prefix='/api/gps')
-    
+
+    # Seed de roles predeterminados
+    with app.app_context():
+        try:
+            from app.database.roles_repository import RolesRepository
+            RolesRepository().seed_default_roles()
+        except Exception as e:
+            print(f"[WARN] No se pudo hacer seed de roles: {e}")
+
     return app

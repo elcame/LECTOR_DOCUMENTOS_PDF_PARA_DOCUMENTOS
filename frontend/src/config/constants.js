@@ -23,10 +23,12 @@ export const ROUTES = {
 }
 
 export const USER_ROLES = {
-  ADMIN: 'admin',
+  SUPER_ADMIN: 'super_admin',
+  EMPRESARIAL: 'empresarial',
   CONDUCTOR: 'conductor',
-  SUPERVISOR: 'supervisor',
 }
+
+export const ADMIN_ROLE_IDS = [USER_ROLES.SUPER_ADMIN, USER_ROLES.EMPRESARIAL]
 
 export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth_token',
