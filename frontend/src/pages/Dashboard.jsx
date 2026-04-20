@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 export default function Dashboard() {
   const { user, isAdmin, logout } = useAuth()
   const navigate = useNavigate()
+  const isConductor = user?.role === 'conductor'
 
   const handleLogout = async () => {
     await logout()
@@ -29,31 +30,35 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Link
-                to="/operaciones"
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                📊 Operaciones
-              </Link>
-              <Link
-                to="/carros"
-                className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900"
-              >
-                🚚 Carros
-              </Link>
-              <Link
-                to="/gps"
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-              >
-                📍 GPS
-              </Link>
-              {isAdmin && (
-                <Link
-                  to="/administrador"
-                  className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800"
-                >
-                  ⚙️ Administrador
-                </Link>
+              {!isConductor && (
+                <>
+                  <Link
+                    to="/operaciones"
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  >
+                    📊 Operaciones
+                  </Link>
+                  <Link
+                    to="/carros"
+                    className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900"
+                  >
+                    🚚 Carros
+                  </Link>
+                  <Link
+                    to="/gps"
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                  >
+                    📍 GPS
+                  </Link>
+                  {isAdmin && (
+                    <Link
+                      to="/administrador"
+                      className="px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800"
+                    >
+                      ⚙️ Administrador
+                    </Link>
+                  )}
+                </>
               )}
               <span className="text-sm text-gray-600">
                 {user?.username} <span className="text-xs text-gray-400">({user?.role})</span>
@@ -88,46 +93,50 @@ export default function Dashboard() {
                 </p>
               </Link>
 
-              <Link
-                to="/operaciones"
-                className="card hover:shadow-lg transition-shadow"
-              >
-                <h3 className="text-xl font-semibold mb-2">📊 Operaciones</h3>
-                <p className="text-gray-600">
-                  Visualiza y analiza tus operaciones
-                </p>
-              </Link>
+              {!isConductor && (
+                <>
+                  <Link
+                    to="/operaciones"
+                    className="card hover:shadow-lg transition-shadow"
+                  >
+                    <h3 className="text-xl font-semibold mb-2">📊 Operaciones</h3>
+                    <p className="text-gray-600">
+                      Visualiza y analiza tus operaciones
+                    </p>
+                  </Link>
 
-              <Link
-                to="/carros"
-                className="card hover:shadow-lg transition-shadow"
-              >
-                <h3 className="text-xl font-semibold mb-2">🚚 Carros</h3>
-                <p className="text-gray-600">
-                  Gestiona vehículos y propietarios vinculados a manifiestos
-                </p>
-              </Link>
+                  <Link
+                    to="/carros"
+                    className="card hover:shadow-lg transition-shadow"
+                  >
+                    <h3 className="text-xl font-semibold mb-2">🚚 Carros</h3>
+                    <p className="text-gray-600">
+                      Gestiona vehículos y propietarios vinculados a manifiestos
+                    </p>
+                  </Link>
 
-              <Link
-                to="/gps"
-                className="card hover:shadow-lg transition-shadow"
-              >
-                <h3 className="text-xl font-semibold mb-2">📍 GPS Tracking</h3>
-                <p className="text-gray-600">
-                  Rastreo en tiempo real de vehículos
-                </p>
-              </Link>
+                  <Link
+                    to="/gps"
+                    className="card hover:shadow-lg transition-shadow"
+                  >
+                    <h3 className="text-xl font-semibold mb-2">📍 GPS Tracking</h3>
+                    <p className="text-gray-600">
+                      Rastreo en tiempo real de vehículos
+                    </p>
+                  </Link>
 
-              {isAdmin && (
-                <Link
-                  to="/administrador"
-                  className="card hover:shadow-lg transition-shadow"
-                >
-                  <h3 className="text-xl font-semibold mb-2">⚙️ Administrador</h3>
-                  <p className="text-gray-600">
-                    Gestiona usuarios y configuración
-                  </p>
-                </Link>
+                  {isAdmin && (
+                    <Link
+                      to="/administrador"
+                      className="card hover:shadow-lg transition-shadow"
+                    >
+                      <h3 className="text-xl font-semibold mb-2">⚙️ Administrador</h3>
+                      <p className="text-gray-600">
+                        Gestiona usuarios y configuración
+                      </p>
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           </div>

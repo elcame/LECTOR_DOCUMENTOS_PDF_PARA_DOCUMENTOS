@@ -26,7 +26,7 @@ function App() {
             <Route path={ROUTES.LOGIN} element={<Login />} />
             <Route path={ROUTES.REGISTER} element={<Register />} />
 
-            <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute requireAdmin><Dashboard /></ProtectedRoute>} />
+            <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path={ROUTES.MANIFIESTOS} element={<ProtectedRoute><Manifiestos /></ProtectedRoute>} />
             <Route path={ROUTES.OPERACIONES} element={<ProtectedRoute requireAdmin><Operaciones /></ProtectedRoute>} />
             <Route path={ROUTES.CARROS} element={<ProtectedRoute requireAdmin><Carros /></ProtectedRoute>} />
