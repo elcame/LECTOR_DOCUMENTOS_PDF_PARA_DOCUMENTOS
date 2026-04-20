@@ -93,6 +93,13 @@ export const ENDPOINTS = {
     TOTAL_EXPENSES: (manifestId) => `/expenses/trip-expenses/total/${manifestId}`,
   },
 
+  // Hojas de gasto (plantillas)
+  EXPENSE_SHEETS: {
+    BASE: '/expense-sheets',
+    BY_ID: (sheetId) => `/expense-sheets/${sheetId}`,
+    APPLY: '/expense-sheets/apply',
+  },
+
   // Carros y propietarios
   CARROS: {
     BASE: '/carros',
