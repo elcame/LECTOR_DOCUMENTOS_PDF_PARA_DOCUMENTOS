@@ -358,6 +358,17 @@ export const manifiestosService = {
   },
 
   /**
+   * Obtener manifiestos con filtro por placa (opcional)
+   */
+  async getManifiestosDataByPlaca({ folderName = null, placa = null } = {}) {
+    const params = folderName ? { folder_name: folderName } : {}
+    if (placa) params.placa = placa
+    params._t = Date.now()
+    const response = await api.get(ENDPOINTS.MANIFIESTOS.MANIFIESTOS_DATA, { params })
+    return response.data
+  },
+
+  /**
    * Obtener lista única de conductores de los manifiestos
    * @returns {Promise<Object>} Lista de conductores únicos
    */

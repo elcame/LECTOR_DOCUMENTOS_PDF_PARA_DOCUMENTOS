@@ -115,7 +115,7 @@ def get_storage_stats():
 def get_manifiestos_data():
     """
     API para obtener manifiestos procesados del usuario actual desde Firebase.
-    Query params opcionales: folder_name, limit
+    Query params opcionales: folder_name, limit, placa
     """
     try:
         username = get_current_user()
@@ -124,16 +124,55 @@ def get_manifiestos_data():
         
         folder_name = request.args.get('folder_name')
         limit = request.args.get('limit', type=int)
+        placa_param = request.args.get('placa')
         
         try:
             from app.database.manifiestos_repository import ManifiestosRepository
+            from app.database.usuarios_repository import UsuariosRepository
+            from app.database.carros_repository import CarrosRepository
+            from modules.auth import get_current_user_role
+
             repo = ManifiestosRepository()
             
             filters = [('username', '==', username), ('active', '==', True)]
             if folder_name:
                 filters.append(('folder_name', '==', folder_name))
+
+            # Si es conductor, filtrar por la placa del carro asignado (en backend, obligatorio)
+            role = get_current_user_role()
+            placa_forzada = None
+            if role == 'conductor':
+                usuarios_repo = UsuariosRepository()
+                user = usuarios_repo.get_usuario_by_username(username)
+                carro_id = (user or {}).get('carro_id')
+                if carro_id:
+                    carro = CarrosRepository().get_by_id(carro_id)
+                    if carro and carro.get('placa'):
+                        placa_forzada = str(carro.get('placa')).strip().upper()
+                        # Intento 1: filtro en Firestore por coincidencia exacta
+                        filters.append(('placa', '==', placa_forzada))
+
+            # Filtro opcional por placa (para admins/empresarial). Para conductor se ignora si ya hay placa_forzada
+            placa_filtro = None
+            if placa_param:
+                placa_filtro = str(placa_param).strip().upper()
+                if placa_filtro and placa_filtro != 'NO ENCONTRADA' and placa_filtro != 'NO_ENCONTRADA':
+                    if role != 'conductor':
+                        filters.append(('placa', '==', placa_filtro))
             
             manifiestos = repo.get_all(filters=filters, limit=limit)
+
+            # Seguridad extra: filtrar en memoria por normalización, por si la placa almacenada no es consistente
+            if placa_forzada:
+                manifiestos = [
+                    m for m in manifiestos
+                    if str(m.get('placa', '')).strip().upper() == placa_forzada
+                ]
+            elif placa_filtro and role != 'conductor':
+                manifiestos = [
+                    m for m in manifiestos
+                    if str(m.get('placa', '')).strip().upper() == placa_filtro
+                ]
             
             print(f"[DEBUG] get_manifiestos_data - Username: {username}, Folder: {folder_name}, Count: {len(manifiestos)}")
             if len(manifiestos) == 0:
@@ -143,7 +182,8 @@ def get_manifiestos_data():
                 'success': True,
                 'data': manifiestos,
                 'manifiestos': manifiestos,
-                'count': len(manifiestos)
+                'count': len(manifiestos),
+                'placa_forzada': placa_forzada,
             })
         except ImportError:
             return jsonify({'success': False, 'error': 'Firebase no está disponible'}), 503

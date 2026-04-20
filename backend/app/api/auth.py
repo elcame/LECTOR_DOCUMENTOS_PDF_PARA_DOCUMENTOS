@@ -163,6 +163,7 @@ def login():
             'full_name': usuario.get('full_name', ''),
             'role': role_name,
             'role_id': role_id,
+            'carro_id': usuario.get('carro_id'),
             'active': usuario.get('active', True)
         }
         
@@ -260,6 +261,7 @@ def register():
                     'full_name': full_name,
                     'role': role_name,
                     'role_id': role_id,
+                    'carro_id': None,
                     'active': True
                 }
             }), 201
