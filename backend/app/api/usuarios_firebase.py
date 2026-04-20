@@ -85,6 +85,7 @@ def create_usuario():
         full_name = data.get('full_name', '').strip()
         role_id = data.get('role_id')
         carro_id = data.get('carro_id')
+        parent_username = data.get('parent_username')
         active = data.get('active', True)
 
         if not username:
@@ -103,7 +104,7 @@ def create_usuario():
         password_hash = hash_password(password)
         repo = UsuariosRepository()
         success = repo.create_usuario(
-            username, email, password_hash, full_name, role_id, active, carro_id
+            username, email, password_hash, full_name, role_id, active, carro_id, parent_username
         )
 
         if success:

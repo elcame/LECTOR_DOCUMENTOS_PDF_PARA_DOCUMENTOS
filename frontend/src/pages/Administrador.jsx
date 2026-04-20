@@ -15,7 +15,7 @@ const TABS = {
 }
 
 export default function Administrador() {
-  const { isSuperAdmin } = useAuth()
+  const { isSuperAdmin, user } = useAuth()
   const [activeTab, setActiveTab] = useState(TABS.RESUMEN)
   const [usuarios, setUsuarios] = useState([])
   const [roles, setRoles] = useState([])
@@ -75,7 +75,11 @@ export default function Administrador() {
       if (isEditing) {
         res = await adminService.updateUsuario(editingUser.username, formData)
       } else {
-        res = await adminService.createUsuario(formData)
+        const payload = { ...formData }
+        if ((payload.role_id || forceRoleId) === 'conductor') {
+          payload.parent_username = user?.username
+        }
+        res = await adminService.createUsuario(payload)
       }
       if (res.success) {
         setModalVisible(false)

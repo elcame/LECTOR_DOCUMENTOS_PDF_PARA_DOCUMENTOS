@@ -7,6 +7,25 @@ from .manifiestos_utils import login_required_api, get_current_user
 bp = Blueprint('manifiestos_data', __name__)
 
 
+def _get_owner_username_for_manifiestos(username: str) -> str:
+    """
+    Para conductores: el owner real de datos es el usuario padre (admin/empresarial).
+    Para otros roles: el owner es el mismo username.
+    """
+    try:
+        from modules.auth import get_current_user_role
+        if get_current_user_role() != 'conductor':
+            return username
+
+        from app.database.usuarios_repository import UsuariosRepository
+        repo = UsuariosRepository()
+        user = repo.get_usuario_by_username(username) or {}
+        parent = user.get('parent_username')
+        return (parent or username)
+    except Exception:
+        return username
+
+
 @bp.route('/pdfs', methods=['GET'])
 @login_required_api
 def get_pdfs():
@@ -121,6 +140,8 @@ def get_manifiestos_data():
         username = get_current_user()
         if not username:
             return jsonify({'success': False, 'error': 'Usuario no autenticado'}), 401
+
+        owner_username = _get_owner_username_for_manifiestos(username)
         
         folder_name = request.args.get('folder_name')
         limit = request.args.get('limit', type=int)
@@ -134,7 +155,7 @@ def get_manifiestos_data():
 
             repo = ManifiestosRepository()
             
-            filters = [('username', '==', username), ('active', '==', True)]
+            filters = [('username', '==', owner_username), ('active', '==', True)]
             if folder_name:
                 filters.append(('folder_name', '==', folder_name))
 

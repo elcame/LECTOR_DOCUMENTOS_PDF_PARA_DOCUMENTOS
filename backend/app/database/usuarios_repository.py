@@ -13,7 +13,7 @@ class UsuariosRepository(FirebaseRepository):
     
     def create_usuario(self, username: str, email: str, password_hash: str,
                       full_name: str = '', role_id: str = None, active: bool = True,
-                      carro_id: str = None) -> bool:
+                      carro_id: str = None, parent_username: str = None) -> bool:
         """
         Crea un nuevo usuario
         
@@ -41,6 +41,7 @@ class UsuariosRepository(FirebaseRepository):
                 'full_name': full_name,
                 'role_id': role_id,
                 'carro_id': carro_id,
+                'parent_username': (parent_username or '').lower() if isinstance(parent_username, str) and parent_username else None,
                 'active': active,
                 'created_at': self._get_timestamp(),
                 'last_login': None
