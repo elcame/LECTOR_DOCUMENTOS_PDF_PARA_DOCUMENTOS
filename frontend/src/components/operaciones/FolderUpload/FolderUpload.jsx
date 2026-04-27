@@ -25,6 +25,7 @@ export default function FolderUpload({
   const [files, setFiles] = useState([])
   const [uploading, setUploading] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [downloadingZip, setDownloadingZip] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [lastUploadedFolder, setLastUploadedFolder] = useState(null)
@@ -89,6 +90,9 @@ export default function FolderUpload({
       setFiles([])
       setFolderName('')
       onUploadSuccess?.({ folderName: name, data: res?.data })
+
+      // Auto-procesar la carpeta inmediatamente después de subir
+      await handleProcessByName(name)
     } catch (err) {
       setError(err?.message || err?.response?.data?.error || 'Error al subir la carpeta.')
     } finally {
@@ -96,9 +100,8 @@ export default function FolderUpload({
     }
   }
 
-  const handleProcess = async () => {
-    // Priorizar carpeta seleccionada del selector, luego la última subida, luego el nombre escrito
-    const name = selectedFolderToProcess || lastUploadedFolder || (folderName || '').trim().replace(/\.\./g, '').replace(/[/\\]/g, '')
+  const handleProcessByName = async (rawName) => {
+    const name = (rawName || '').trim().replace(/\.\./g, '').replace(/[/\\]/g, '')
     if (!name) {
       setError('Selecciona una carpeta para procesar.')
       return
@@ -126,12 +129,48 @@ export default function FolderUpload({
     }
   }
 
+  const handleProcess = async () => {
+    const name = selectedFolderToProcess || lastUploadedFolder || (folderName || '').trim().replace(/\.\./g, '').replace(/[/\\]/g, '')
+    return handleProcessByName(name)
+  }
+
+  const handleDownloadZip = async (rawName) => {
+    const name = (rawName || '').trim().replace(/\.\./g, '').replace(/[/\\]/g, '')
+    if (!name) {
+      setError('Selecciona una carpeta para descargar.')
+      return
+    }
+    setError('')
+    setDownloadingZip(true)
+    try {
+      await manifiestosService.downloadFolderZip(name)
+    } catch (err) {
+      setError(err?.message || err?.response?.data?.error || 'Error al descargar la carpeta.')
+    } finally {
+      setDownloadingZip(false)
+    }
+  }
+
+  const openBulkRenameForCurrent = () => {
+    const name = selectedFolderToProcess || lastUploadedFolder || (folderName || '').trim().replace(/\.\./g, '').replace(/[/\\]/g, '')
+    if (!name) {
+      setError('Selecciona una carpeta para renombrar PDFs.')
+      return
+    }
+    setSelectedFolderToProcess(name)
+    setShowBulkRename(true)
+  }
+
   // El botón se habilita si hay archivos Y nombre de carpeta válido
   const folderNameTrimmed = (folderName || '').trim()
   const folderNameValid = folderNameTrimmed.length > 0
   const hasFiles = Array.isArray(files) && files.length > 0
   const canUpload = hasFiles && folderNameValid && !uploading
   const canProcess = (selectedFolderToProcess || lastUploadedFolder || folderNameValid) && !processing
+  const folderForActions = selectedFolderToProcess || lastUploadedFolder || folderNameTrimmed
+  const canDownloadZip = !!folderForActions && !uploading && !processing && !downloadingZip
+  const subirActionsFolder = lastUploadedFolder
+  const canSubirSectionActions = !!subirActionsFolder && !uploading && !processing && !downloadingZip
 
   // Mensajes de ayuda para el botón
   const getUploadButtonHelp = () => {
@@ -177,10 +216,13 @@ export default function FolderUpload({
               loadingFolders={loadingFolders}
               canProcess={canProcess}
               processing={processing}
+              downloadingZip={downloadingZip}
+              canDownloadZip={canDownloadZip}
               onChangeSelectedFolder={setSelectedFolderToProcess}
               onClickProcess={handleProcess}
               onClickRefresh={() => onRefresh?.()}
-              onClickRename={() => setShowBulkRename(true)}
+              onClickRename={openBulkRenameForCurrent}
+              onClickDownloadZip={() => handleDownloadZip(selectedFolderToProcess)}
             />
           </div>
         )}
@@ -207,11 +249,17 @@ export default function FolderUpload({
               showResults={showResults}
               processingResults={processingResults}
               uploading={uploading}
+              processing={processing}
+              downloadingZip={downloadingZip}
               canUpload={canUpload}
+              canDownloadZip={canSubirSectionActions}
               folderNameTrimmed={folderNameTrimmed}
               onSelectFolder={handleSelectFolder}
               onSelectFiles={handleSelectFiles}
               onUpload={handleUpload}
+              onOpenBulkRename={openBulkRenameForCurrent}
+              canOpenBulkRename={canSubirSectionActions}
+              onDownloadZip={() => handleDownloadZip(subirActionsFolder)}
               onCloseResults={() => setShowResults(false)}
               getUploadButtonHelp={getUploadButtonHelp}
               ProcessingResultsComponent={ProcessingResults}

@@ -7,11 +7,17 @@ export default function SubirCarpetaSection({
   showResults,
   processingResults,
   uploading = false,
+  processing = false,
+  downloadingZip = false,
   canUpload,
+  canDownloadZip = false,
+  canOpenBulkRename = false,
   folderNameTrimmed,
   onSelectFolder,
   onSelectFiles,
   onUpload,
+  onOpenBulkRename,
+  onDownloadZip,
   onCloseResults,
   getUploadButtonHelp,
   ProcessingResultsComponent,
@@ -140,14 +146,65 @@ export default function SubirCarpetaSection({
         )}
 
         <div className="space-y-2 pt-2">
-          <button
-            type="button"
-            onClick={onUpload}
-            disabled={!canUpload}
-            className="btn btn-primary w-full sm:w-auto"
-          >
-            {uploading ? 'Subiendo...' : 'Subir carpeta'}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={onUpload}
+              disabled={!canUpload}
+              className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition
+                ${canUpload ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed'}
+              `}
+            >
+              {uploading ? (
+                <>
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-b-transparent" />
+                  Subiendo...
+                </>
+              ) : processing ? (
+                <>
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-b-transparent" />
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16V4m0 12l-4-4m4 4l4-4M4 20h16" />
+                  </svg>
+                  Subir y procesar
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={onDownloadZip}
+              disabled={!canDownloadZip}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Descargar la carpeta como ZIP"
+            >
+              {downloadingZip ? (
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-b-transparent" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16V4m0 12l-4-4m4 4l4-4M4 20h16" />
+                </svg>
+              )}
+              Descargar carpeta
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenBulkRename}
+              disabled={!canOpenBulkRename}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Renombrar PDFs de la carpeta"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Renombrar PDFs
+            </button>
+          </div>
 
           {!canUpload && !uploading && (
             <p className="text-xs text-amber-600 font-medium">

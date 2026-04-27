@@ -4,10 +4,13 @@ export default function ProcesarCarpetaSection({
   loadingFolders = false,
   canProcess,
   processing = false,
+  canDownloadZip = false,
+  downloadingZip = false,
   onChangeSelectedFolder,
   onClickProcess,
   onClickRefresh,
   onClickRename,
+  onClickDownloadZip,
 }) {
   return (
     <div className="space-y-4">
@@ -79,6 +82,25 @@ export default function ProcesarCarpetaSection({
               ? 'Procesando...'
               : `Procesar carpeta${selectedFolderToProcess ? ` "${selectedFolderToProcess}"` : ''}`}
           </button>
+
+          {selectedFolderToProcess && (
+            <button
+              type="button"
+              onClick={onClickDownloadZip}
+              disabled={!canDownloadZip}
+              className="btn btn-outline btn-sm flex items-center gap-2"
+              title="Descargar la carpeta como ZIP"
+            >
+              {downloadingZip ? (
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-b-transparent" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16V4m0 12l-4-4m4 4l4-4M4 20h16" />
+                </svg>
+              )}
+              Descargar carpeta
+            </button>
+          )}
 
           {selectedFolderToProcess && (
             <button

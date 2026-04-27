@@ -91,6 +91,8 @@ export const ENDPOINTS = {
     TRIP_EXPENSES: '/expenses/trip-expenses',
     TRIP_EXPENSE_BY_ID: (expenseId) => `/expenses/trip-expenses/${expenseId}`,
     TOTAL_EXPENSES: (manifestId) => `/expenses/trip-expenses/total/${manifestId}`,
+    TOTAL_EXPENSES_BY_PLACA: '/expenses/trip-expenses/total-by-placa',
+    EXPENSES_BY_TYPE_BY_PLACA: '/expenses/trip-expenses/by-type-by-placa',
   },
 
   // Hojas de gasto (plantillas)
@@ -98,6 +100,23 @@ export const ENDPOINTS = {
     BASE: '/expense-sheets',
     BY_ID: (sheetId) => `/expense-sheets/${sheetId}`,
     APPLY: '/expense-sheets/apply',
+  },
+
+  // Trailer (Administración)
+  TRAILERS: {
+    BASE: '/trailers',
+    BY_ID: (trailerId) => `/trailers/${trailerId}`,
+    EVENTS: (trailerId) => `/trailers/${trailerId}/events`,
+    SUMMARY: (trailerId) => `/trailers/${trailerId}/summary`,
+    TIRES: (trailerId) => `/trailers/${trailerId}/tires`,
+    TIRE_BY_POSITION: (trailerId, positionId) => `/trailers/${trailerId}/tires/${positionId}`,
+    TIRE_ITEMS: (trailerId) => `/trailers/${trailerId}/tire-items`,
+  },
+
+  // Proveedores (productos / servicios)
+  PROVIDERS: {
+    BASE: '/providers',
+    ITEMS: (providerId) => `/providers/${providerId}/items`,
   },
 
   // Carros y propietarios

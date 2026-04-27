@@ -30,7 +30,16 @@ export default function ExpenseSheetsSection({ selectedManifest }) {
         expensesService.getExpenseTypes(),
       ])
       if (sheetsRes?.success) setSheets(sheetsRes.data || [])
-      if (typesRes?.success) setExpenseTypes(typesRes.data || [])
+      if (typesRes?.success) {
+        const types = typesRes.data || []
+        setExpenseTypes(types)
+        // Si no hay tipos, inicializar los del sistema y recargar (primera vez)
+        if (types.length === 0) {
+          await expensesService.initializeExpenseTypes()
+          const reloadTypes = await expensesService.getExpenseTypes()
+          if (reloadTypes?.success) setExpenseTypes(reloadTypes.data || [])
+        }
+      }
     } catch (e) {
       setError(e?.message || 'Error al cargar hojas de gasto')
     } finally {
@@ -153,7 +162,12 @@ export default function ExpenseSheetsSection({ selectedManifest }) {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-slate-900">{s.name}</p>
-                      <p className="text-xs text-slate-500">{(s.items || []).length} item(s)</p>
+                      <p className="text-xs text-slate-500">
+                        {(s.items || []).length} gasto(s) · Total:{' '}
+                        <span className="font-semibold text-slate-900">
+                          ${Number((s.items || []).reduce((acc, it) => acc + (parseFloat(it?.amount || 0) || 0), 0)).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </p>
                     </div>
                     <button
                       onClick={() => handleDelete(s.id)}
@@ -164,13 +178,21 @@ export default function ExpenseSheetsSection({ selectedManifest }) {
                     </button>
                   </div>
                   {(s.items || []).length > 0 && (
-                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {s.items.slice(0, 6).map((it, idx) => (
-                        <div key={idx} className="bg-slate-50 rounded px-3 py-2 text-sm flex justify-between">
-                          <span className="text-slate-700">{it.expense_type}</span>
-                          <span className="font-semibold text-slate-900">${Number(it.amount || 0).toLocaleString('es-CO')}</span>
-                        </div>
-                      ))}
+                    <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
+                      <div className="grid grid-cols-12 gap-2 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">
+                        <div className="col-span-8">Tipo</div>
+                        <div className="col-span-4 text-right">Monto</div>
+                      </div>
+                      <div className="divide-y divide-slate-200">
+                        {s.items.map((it, idx) => (
+                          <div key={idx} className="grid grid-cols-12 gap-2 px-3 py-2 text-sm">
+                            <div className="col-span-8 text-slate-700">{it.expense_type}</div>
+                            <div className="col-span-4 text-right font-semibold text-slate-900">
+                              ${Number(it.amount || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -273,7 +295,7 @@ export default function ExpenseSheetsSection({ selectedManifest }) {
                   className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                   disabled={saving}
                 >
-                  + Agregar item
+                  + Agregar gasto
                 </button>
                 <div className="text-sm text-slate-600">
                   Total: <span className="font-semibold text-slate-900">${totalCurrent.toLocaleString('es-CO')}</span>

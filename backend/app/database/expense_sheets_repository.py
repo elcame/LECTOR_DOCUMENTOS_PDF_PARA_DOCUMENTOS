@@ -17,7 +17,14 @@ class ExpenseSheetsRepository(FirebaseRepository):
             ('owner_username', '==', owner_username),
             ('active', '==', True),
         ]
-        return self.get_all(filters=filters, order_by='created_at')
+        # Evitar order_by para no requerir índice compuesto en Firestore (owner_username + active + created_at).
+        # Ordenamos en memoria por created_at.
+        results = self.get_all(filters=filters)
+        try:
+            results.sort(key=lambda x: x.get('created_at') or '', reverse=True)
+        except Exception:
+            pass
+        return results
 
     def create_sheet(self, owner_username: str, name: str, items: List[Dict]) -> Optional[str]:
         try:

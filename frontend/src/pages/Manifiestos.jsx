@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { manifiestosService } from '../services/manifiestosService'
 import { useAuth } from '../context/AuthContext'
 import ExpenseTypesTable from '../components/manifiestos/ExpenseTypesTable'
@@ -6,12 +7,14 @@ import TripExpensesTable from '../components/manifiestos/TripExpensesTable'
 import ManifestSelector from '../components/manifiestos/ManifestSelector'
 import AdvancePayment from '../components/manifiestos/AdvancePayment'
 import Loading from '../components/common/Loading/Loading'
-import SidebarManifiestos from '../components/manifiestos/SidebarManifiestos'
 import ExpenseSheetsSection from '../components/manifiestos/ExpenseSheetsSection'
+import ManifiestosCharts from '../components/charts/ManifiestosCharts'
+import CarrosProducidoSection from '../components/manifiestos/CarrosProducidoSection'
 
 export default function Manifiestos() {
   const { user } = useAuth()
-  const [activeSection, setActiveSection] = useState('gastos') // gastos | anticipo | tipos | hojas
+  const [searchParams] = useSearchParams()
+  const [activeSection, setActiveSection] = useState('gastos') // gastos | anticipo | tipos | hojas | graficas | carros_producido
   const [selectedManifest, setSelectedManifest] = useState(null)
   const [manifests, setManifests] = useState([])
   const [placas, setPlacas] = useState([])
@@ -19,11 +22,17 @@ export default function Manifiestos() {
   const [placaForzada, setPlacaForzada] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // sidebar ahora es global (AppShell)
 
   useEffect(() => {
     loadManifests()
   }, [])
+
+  useEffect(() => {
+    const section = (searchParams.get('section') || '').trim().toLowerCase()
+    if (!section) return
+    setActiveSection(section)
+  }, [searchParams])
 
   const loadManifests = async () => {
     try {
@@ -74,16 +83,8 @@ export default function Manifiestos() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <SidebarManifiestos
-        activeSection={activeSection}
-        onChangeSection={setActiveSection}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
-      />
-
-      <div className={`max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 ${sidebarCollapsed ? 'md:pl-[92px]' : 'md:pl-[268px]'}`}>
-        <header className="mb-6">
+    <div className="space-y-6">
+        <header className="mb-2">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">
               Gestión de Manifiestos
@@ -139,7 +140,7 @@ export default function Manifiestos() {
         )}
 
         {/* Selector de Manifiesto */}
-        <div className="mb-6">
+        <div>
           <ManifestSelector
             manifests={manifests}
             selectedManifest={selectedManifest}
@@ -179,10 +180,19 @@ export default function Manifiestos() {
               {activeSection === 'hojas' && (
                 <ExpenseSheetsSection selectedManifest={selectedManifest} />
               )}
+
+              {activeSection === 'graficas' && user?.role !== 'conductor' && (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                  <ManifiestosCharts />
+                </div>
+              )}
+
+              {activeSection === 'carros_producido' && user?.role !== 'conductor' && (
+                <CarrosProducidoSection />
+              )}
             </>
           )}
         </div>
-      </div>
     </div>
   )
 }

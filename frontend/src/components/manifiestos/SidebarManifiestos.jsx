@@ -1,4 +1,5 @@
 export default function SidebarManifiestos({
+  isConductor = false,
   activeSection,
   onChangeSection,
   collapsed = false,
@@ -71,6 +72,8 @@ export default function SidebarManifiestos({
         <NavButton id="gastos" icon="💰" label="Gastos de viaje" />
         <NavButton id="anticipo" icon="💵" label="Anticipo" />
         <NavButton id="tipos" icon="🏷️" label="Tipos de gasto" />
+        {!isConductor && <NavButton id="graficas" icon="📈" label="Gráficas" />}
+        {!isConductor && <NavButton id="carros_producido" icon="🚚" label="Carros producido" />}
         <div className="pt-3 mt-2 border-t border-slate-200">
           <NavButton id="hojas" icon="🧾" label="Hojas de gasto" />
         </div>

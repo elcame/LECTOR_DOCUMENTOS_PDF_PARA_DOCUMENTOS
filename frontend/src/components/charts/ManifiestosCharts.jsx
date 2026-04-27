@@ -59,6 +59,7 @@ export default function ManifiestosCharts() {
   const [data, setData] = useState(null)
   const [ingresosCarro, setIngresosCarro] = useState(null)
   const [ingresosCarroError, setIngresosCarroError] = useState(null)
+  // Nota: "Carros producido" (tarjetas) ahora vive en su propia sección/componente.
 
   const loadData = async () => {
     try {
@@ -100,6 +101,8 @@ export default function ManifiestosCharts() {
   useEffect(() => {
     loadData()
   }, [period])
+
+  // (se removió la carga de gastos por placa)
 
   if (loading) {
     return (

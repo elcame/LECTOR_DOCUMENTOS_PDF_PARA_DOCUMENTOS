@@ -421,6 +421,24 @@ export const manifiestosService = {
     const response = await api.get('/ingresos/carro', { params })
     return response.data
   },
+
+  /**
+   * Obtener total de gastos por placa (sumatoria de trip_expenses).
+   */
+  async getTotalGastosByPlaca(placa) {
+    const params = { placa }
+    const response = await api.get(ENDPOINTS.EXPENSES.TOTAL_EXPENSES_BY_PLACA, { params })
+    return response.data
+  },
+
+  /**
+   * Obtener gastos por tipo (agrupados) por placa.
+   */
+  async getGastosByTipoByPlaca(placa) {
+    const params = { placa }
+    const response = await api.get(ENDPOINTS.EXPENSES.EXPENSES_BY_TYPE_BY_PLACA, { params })
+    return response.data
+  },
 }
 
 export default manifiestosService

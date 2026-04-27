@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import adminService from '../services/adminService'
 import Loading from '../components/common/Loading/Loading'
@@ -6,16 +7,21 @@ import UsersTable from '../components/admin/UsersTable'
 import UserFormModal from '../components/admin/UserFormModal'
 import RolesManager from '../components/admin/RolesManager'
 import AdminSummary from '../components/admin/AdminSummary'
+import TrailerAdminSection from '../components/admin/trailer/TrailerAdminSection'
+import ProveedoresSection from '../components/proveedores/ProveedoresSection'
 
 const TABS = {
   RESUMEN: 'resumen',
   EMPRESARIALES: 'empresariales',
   CONDUCTORES: 'conductores',
   ROLES: 'roles',
+  TRAILER: 'trailer',
+  PROVEEDORES: 'proveedores',
 }
 
 export default function Administrador() {
   const { isSuperAdmin, user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(TABS.RESUMEN)
   const [usuarios, setUsuarios] = useState([])
   const [roles, setRoles] = useState([])
@@ -50,6 +56,12 @@ export default function Administrador() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    const tab = (searchParams.get('tab') || '').trim().toLowerCase()
+    if (tab === 'trailer') setActiveTab(TABS.TRAILER)
+    if (tab === 'proveedores') setActiveTab(TABS.PROVEEDORES)
+  }, [searchParams])
 
   const empresariales = usuarios.filter((u) =>
     u.role_id === 'super_admin' || u.role_id === 'empresarial' || u.role_id === 'admin'
@@ -134,6 +146,8 @@ export default function Administrador() {
       : []),
     { id: TABS.CONDUCTORES, label: 'Conductores', icon: '🚗' },
     { id: TABS.ROLES, label: 'Roles y Permisos', icon: '🔐' },
+    { id: TABS.TRAILER, label: 'Trailer', icon: '🚛' },
+    { id: TABS.PROVEEDORES, label: 'Proveedores', icon: '🏪' },
   ]
 
   return (
@@ -209,6 +223,16 @@ export default function Administrador() {
                 onUpdatePermissions={handleUpdatePermissions}
                 isSuperAdmin={isSuperAdmin}
               />
+            )}
+
+            {activeTab === TABS.TRAILER && (
+              <TrailerAdminSection />
+            )}
+
+            {activeTab === TABS.PROVEEDORES && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <ProveedoresSection />
+              </div>
             )}
           </>
         )}

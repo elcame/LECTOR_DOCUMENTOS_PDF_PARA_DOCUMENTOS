@@ -17,6 +17,7 @@ export const ROUTES = {
   OPERACIONES: '/operaciones',
   CARROS: '/carros',
   ADMINISTRADOR: '/administrador',
+  PROVEEDORES: '/proveedores',
   ROLES: '/roles',
   USUARIOS_FIREBASE: '/usuarios-firebase',
   GPS_TRACKING: '/gps',

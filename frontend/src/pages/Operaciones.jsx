@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { manifiestosService } from '../services/manifiestosService'
 import FolderUpload from '../components/operaciones/FolderUpload'
 import PDFList from '../components/operaciones/PDFList'
 import StorageStats from '../components/operaciones/StorageStats'
 import ManifiestosTable from '../components/operaciones/ManifiestosTable'
-import SidebarOperaciones from '../componentes/operaciones/SidebarOperaciones'
 
 export default function Operaciones() {
+  const [searchParams] = useSearchParams()
   const [currentFolder, setCurrentFolder] = useState(null)
   const [showStats, setShowStats] = useState(false)
   const [overview, setOverview] = useState(null)
@@ -62,27 +63,34 @@ export default function Operaciones() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="flex gap-6">
-          <SidebarOperaciones
-            viewMode={viewMode}
-            showStats={showStats}
-            onChangeViewMode={setViewMode}
-            onToggleStats={() => setShowStats(!showStats)}
-            onGoToProcesarCarpeta={() => {
-              setActiveFolderSection('procesar')
-              scrollToSection('section-procesar-carpeta')
-            }}
-            onGoToSubirCarpeta={() => {
-              setActiveFolderSection('subir')
-              scrollToSection('section-subir-carpeta')
-            }}
-          />
+  useEffect(() => {
+    const section = (searchParams.get('section') || '').trim().toLowerCase()
+    if (!section) return
+    if (section === 'stats') {
+      setShowStats(true)
+      requestAnimationFrame(() => scrollToSection('section-operaciones-stats'))
+    }
+    if (section === 'pdfs') {
+      setViewMode('grid')
+      requestAnimationFrame(() => scrollToSection('section-operaciones-pdfs'))
+    }
+    if (section === 'tabla') {
+      setViewMode('table')
+      requestAnimationFrame(() => scrollToSection('section-operaciones-tabla'))
+    }
+    if (section === 'procesar') {
+      setActiveFolderSection('procesar')
+      requestAnimationFrame(() => scrollToSection('section-procesar-carpeta'))
+    }
+    if (section === 'subir') {
+      setActiveFolderSection('subir')
+      requestAnimationFrame(() => scrollToSection('section-subir-carpeta'))
+    }
+  }, [searchParams])
 
-          <div className="flex-1">
-            <header className="mb-6">
+  return (
+    <div className="space-y-6">
+      <header id="section-operaciones-inicio" className="mb-2 scroll-mt-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">
@@ -116,68 +124,47 @@ export default function Operaciones() {
                   </div>
                 </div>
               </div>
-            </header>
+      </header>
 
-            {error && (
-              <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-6">
-              {showStats && (
-                loading
-                  ? (
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center text-slate-500">
-                      Cargando estadísticas...
-                    </div>
-                  )
-                  : overview
-                    ? (
-                      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                        <StorageStats
-                          storage={overview.storage}
-                          fromParent={true}
-                          onRefresh={handleRefresh}
-                        />
-                      </div>
-                    )
-                    : null
-              )}
-
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
-                <FolderUpload
-                  visibleSection={activeFolderSection}
-                  folders={overview?.folders ?? []}
-                  loadingFolders={loading}
-                  onRefresh={handleRefresh}
-                  onUploadSuccess={handleUploadSuccess}
-                  onProcessSuccess={handleProcessSuccess}
-                />
-              </div>
-              
-              {/* Vista de Grid (original) o Tabla */}
-              {viewMode === 'grid' ? (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-                  <PDFList
-                    pdfs={overview?.pdfs ?? []}
-                    folderName={currentFolder}
-                    loading={loading}
-                    onRefresh={handleRefresh}
-                  />
-                </div>
-              ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-                  <ManifiestosTable
-                    folderName={currentFolder}
-                    refreshTrigger={refreshTrigger}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+          {error}
         </div>
+      )}
+
+      {showStats && (
+        loading ? (
+          <div id="section-operaciones-stats" className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center text-slate-500 scroll-mt-6">
+            Cargando estadísticas...
+          </div>
+        ) : overview ? (
+          <div id="section-operaciones-stats" className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 scroll-mt-6">
+            <StorageStats storage={overview.storage} fromParent={true} onRefresh={handleRefresh} />
+          </div>
+        ) : null
+      )}
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
+        <FolderUpload
+          visibleSection={activeFolderSection}
+          folders={overview?.folders ?? []}
+          loadingFolders={loading}
+          onRefresh={handleRefresh}
+          onUploadSuccess={handleUploadSuccess}
+          onProcessSuccess={handleProcessSuccess}
+        />
       </div>
+              
+      {/* Vista de Grid (original) o Tabla */}
+      {viewMode === 'grid' ? (
+        <div id="section-operaciones-pdfs" className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 scroll-mt-6">
+          <PDFList pdfs={overview?.pdfs ?? []} folderName={currentFolder} loading={loading} onRefresh={handleRefresh} />
+        </div>
+      ) : (
+        <div id="section-operaciones-tabla" className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 scroll-mt-6">
+          <ManifiestosTable folderName={currentFolder} refreshTrigger={refreshTrigger} />
+        </div>
+      )}
     </div>
   )
 }

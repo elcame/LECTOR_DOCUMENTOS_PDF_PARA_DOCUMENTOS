@@ -3,6 +3,10 @@ export default function SidebarOperaciones({
   showStats,
   onChangeViewMode,
   onToggleStats,
+  onGoToDashboard,
+  onGoToStats,
+  onGoToPDFs,
+  onGoToTabla,
   onGoToProcesarCarpeta,
   onGoToSubirCarpeta,
   collapsed = false,
@@ -62,7 +66,19 @@ export default function SidebarOperaciones({
 
       <nav className="flex-1 px-2 py-3 space-y-2 overflow-y-auto">
         <button
-          onClick={() => onChangeViewMode?.('table')}
+          onClick={onGoToDashboard}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+          title="Ir al Dashboard"
+          type="button"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 11l9-8 9 8v10a2 2 0 01-2 2h-4a2 2 0 01-2-2V12H11v9a2 2 0 01-2 2H5a2 2 0 01-2-2V11z" />
+          </svg>
+          {showLabel && <span>Dashboard</span>}
+        </button>
+
+        <button
+          onClick={onGoToTabla || (() => onChangeViewMode?.('table'))}
           className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm ${
             viewMode === 'table'
               ? 'bg-blue-50 text-blue-700'
@@ -83,7 +99,7 @@ export default function SidebarOperaciones({
         </button>
 
         <button
-          onClick={() => onChangeViewMode?.('grid')}
+          onClick={onGoToPDFs || (() => onChangeViewMode?.('grid'))}
           className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm ${
             viewMode === 'grid'
               ? 'bg-blue-50 text-blue-700'
@@ -104,7 +120,7 @@ export default function SidebarOperaciones({
         </button>
 
         <button
-          onClick={onToggleStats}
+          onClick={onGoToStats || onToggleStats}
           className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm ${
             showStats
               ? 'bg-blue-50 text-blue-700'

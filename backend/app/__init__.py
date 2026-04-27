@@ -55,6 +55,8 @@ def create_app(config_class=Config):
     from app.api.ingresos_detalle import bp as ingresos_detalle_bp  # 🔥 NUEVO
     from app.api.gps import bp as gps_bp
     from app.api.expense_sheets import bp as expense_sheets_bp
+    from app.api.trailers import bp as trailers_bp
+    from app.api.providers import bp as providers_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(usuarios_bp, url_prefix='/api/usuarios')
@@ -75,6 +77,8 @@ def create_app(config_class=Config):
     app.register_blueprint(ingresos_detalle_bp, url_prefix='/api/ingresos')  # 🔥 NUEVO
     app.register_blueprint(gps_bp, url_prefix='/api/gps')
     app.register_blueprint(expense_sheets_bp, url_prefix='/api/expense-sheets')
+    app.register_blueprint(trailers_bp, url_prefix='/api')
+    app.register_blueprint(providers_bp, url_prefix='/api')
 
     # Seed de roles predeterminados
     with app.app_context():

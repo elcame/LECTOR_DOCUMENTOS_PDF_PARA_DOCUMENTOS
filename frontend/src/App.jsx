@@ -13,6 +13,8 @@ import Operaciones from './pages/Operaciones'
 import Carros from './pages/Carros'
 import Administrador from './pages/Administrador'
 import GPSTracking from './pages/GPSTracking'
+import Proveedores from './pages/Proveedores'
+import AppShell from './components/layout/AppShell'
 
 function App() {
   return (
@@ -26,15 +28,34 @@ function App() {
             <Route path={ROUTES.LOGIN} element={<Login />} />
             <Route path={ROUTES.REGISTER} element={<Register />} />
 
-            <Route path={ROUTES.DASHBOARD} element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path={ROUTES.MANIFIESTOS} element={<ProtectedRoute><Manifiestos /></ProtectedRoute>} />
-            <Route path={ROUTES.OPERACIONES} element={<ProtectedRoute requireAdmin><Operaciones /></ProtectedRoute>} />
-            <Route path={ROUTES.CARROS} element={<ProtectedRoute requireAdmin><Carros /></ProtectedRoute>} />
-            <Route path={ROUTES.GPS_TRACKING} element={<ProtectedRoute requireAdmin><GPSTracking /></ProtectedRoute>} />
+            <Route
+              path={ROUTES.DASHBOARD}
+              element={<ProtectedRoute><AppShell><Dashboard /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.MANIFIESTOS}
+              element={<ProtectedRoute><AppShell><Manifiestos /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.OPERACIONES}
+              element={<ProtectedRoute requireAdmin><AppShell><Operaciones /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.CARROS}
+              element={<ProtectedRoute requireAdmin><AppShell><Carros /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.PROVEEDORES}
+              element={<ProtectedRoute requireAdmin><AppShell><Proveedores /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.GPS_TRACKING}
+              element={<ProtectedRoute requireAdmin><AppShell><GPSTracking /></AppShell></ProtectedRoute>}
+            />
 
             <Route
               path={ROUTES.ADMINISTRADOR}
-              element={<ProtectedRoute requireAdmin><Administrador /></ProtectedRoute>}
+              element={<ProtectedRoute requireAdmin><AppShell><Administrador /></AppShell></ProtectedRoute>}
             />
 
             <Route path="*" element={<Navigate to="/landing" replace />} />

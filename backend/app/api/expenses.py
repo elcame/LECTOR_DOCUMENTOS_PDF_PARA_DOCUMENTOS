@@ -397,3 +397,132 @@ def get_total_expenses(manifest_id):
             'success': False,
             'error': str(e)
         }), 500
+
+
+@bp.route('/trip-expenses/total-by-placa', methods=['GET'])
+@login_required_api
+def get_total_expenses_by_placa():
+    """Obtiene el total de gastos para todos los manifiestos de una placa."""
+    try:
+        username = get_current_user()
+        if not username:
+            return jsonify({'success': False, 'error': 'Usuario no autenticado'}), 401
+
+        placa = (request.args.get('placa') or '').strip().upper()
+        if not placa:
+            return jsonify({'success': False, 'error': 'Parámetro placa requerido'}), 400
+
+        from app.database.manifiestos_repository import ManifiestosRepository
+        from app.database.trip_expenses_repository import TripExpensesRepository
+
+        man_repo = ManifiestosRepository()
+        exp_repo = TripExpensesRepository()
+
+        # Manifiestos de esa placa para el usuario actual
+        manifests = man_repo.get_all(filters=[
+            ('username', '==', username),
+            ('active', '==', True),
+            ('placa', '==', placa),
+        ])
+
+        manifest_ids = {m.get('id') for m in (manifests or []) if m.get('id')}
+        if not manifest_ids:
+            return jsonify({'success': True, 'data': {'placa': placa, 'total_gastos': 0.0, 'manifiestos': 0}})
+
+        # Cargar gastos del usuario y sumar solo los que pertenezcan a esos manifiestos
+        expenses = exp_repo.get_expenses_by_user(username)
+        total = 0.0
+        for e in (expenses or []):
+            if e.get('manifest_id') in manifest_ids:
+                try:
+                    total += float(e.get('amount') or 0)
+                except Exception:
+                    pass
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'placa': placa,
+                'total_gastos': total,
+                'manifiestos': len(manifest_ids),
+            }
+        })
+    except ImportError:
+        return jsonify({'success': False, 'error': 'Firebase no está disponible'}), 503
+    except Exception as e:
+        print(f"Error al obtener total de gastos por placa: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/trip-expenses/by-type-by-placa', methods=['GET'])
+@login_required_api
+def get_expenses_by_type_by_placa():
+    """Obtiene el total de gastos agrupados por tipo para una placa."""
+    try:
+        username = get_current_user()
+        if not username:
+            return jsonify({'success': False, 'error': 'Usuario no autenticado'}), 401
+
+        placa = (request.args.get('placa') or '').strip().upper()
+        if not placa:
+            return jsonify({'success': False, 'error': 'Parámetro placa requerido'}), 400
+
+        from app.database.manifiestos_repository import ManifiestosRepository
+        from app.database.trip_expenses_repository import TripExpensesRepository
+
+        man_repo = ManifiestosRepository()
+        exp_repo = TripExpensesRepository()
+
+        manifests = man_repo.get_all(filters=[
+            ('username', '==', username),
+            ('active', '==', True),
+            ('placa', '==', placa),
+        ])
+        manifest_ids = {m.get('id') for m in (manifests or []) if m.get('id')}
+
+        if not manifest_ids:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'placa': placa,
+                    'total': 0.0,
+                    'by_type': [],
+                }
+            })
+
+        expenses = exp_repo.get_expenses_by_user(username)
+        totals = {}
+        total = 0.0
+        for e in (expenses or []):
+            if e.get('manifest_id') not in manifest_ids:
+                continue
+            expense_type = (e.get('expense_type') or 'Otros')
+            try:
+                amount = float(e.get('amount') or 0)
+            except Exception:
+                amount = 0.0
+            totals[expense_type] = totals.get(expense_type, 0.0) + amount
+            total += amount
+
+        by_type = [
+            {'expense_type': k, 'total': float(v)}
+            for k, v in sorted(totals.items(), key=lambda x: x[1], reverse=True)
+        ]
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'placa': placa,
+                'total': float(total),
+                'by_type': by_type,
+            }
+        })
+    except ImportError:
+        return jsonify({'success': False, 'error': 'Firebase no está disponible'}), 503
+    except Exception as e:
+        print(f"Error al obtener gastos por tipo y placa: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
