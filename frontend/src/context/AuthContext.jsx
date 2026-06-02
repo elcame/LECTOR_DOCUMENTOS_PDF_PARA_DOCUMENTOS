@@ -47,6 +47,10 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     await authService.logout()
+    try {
+      const { clearThumbnailCache } = await import('../utils/thumbnailCache')
+      clearThumbnailCache()
+    } catch (_) {}
     setUser(null)
   }
 

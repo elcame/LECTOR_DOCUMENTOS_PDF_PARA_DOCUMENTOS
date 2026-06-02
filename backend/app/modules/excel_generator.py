@@ -7,6 +7,56 @@ from datetime import datetime
 from io import BytesIO
 
 
+def _pick(d: dict, *keys, default=''):
+    for k in keys:
+        if k in d and d.get(k) not in (None, ''):
+            return d.get(k)
+    return default
+
+
+def _normalize_excel_row(m: dict) -> dict:
+    """
+    Normaliza distintas variantes de campos del manifiesto a un schema estable
+    para exportación en Excel.
+    """
+    if not m:
+        m = {}
+
+    placa = _pick(m, 'placa', 'PLACA', default='No encontrada')
+    conductor = _pick(m, 'conductor', 'CONDUCTOR', default='No encontrado')
+    origen = _pick(m, 'origen', 'ORIGEN', default='No encontrado')
+    destino = _pick(m, 'destino', 'DESTINO', default='No encontrado')
+
+    fecha_viaje = _pick(
+        m,
+        'fecha inicio', 'fecha_inicio', 'fecha_viaje', 'FECHA VIAJE',
+        'fecha', 'fecha_inicio_viaje',
+        default=''
+    )
+    mes = _pick(m, 'mes', 'MES', default='')
+    load_id = _pick(m, 'load_id', 'loadId', 'ID', 'id', default='No encontrado')
+    kof = _pick(m, 'kof', 'KOF', default='No encontrado')
+    remesa = _pick(m, 'remesa', 'REMESA', default='No encontrada')
+    empresa = _pick(m, 'empresa', 'EMPRESA', default='')
+    valor_flete = _pick(m, 'valormanifiesto', 'valorManifiesto', 'VALOR FLETE', 'valor_flete', default='')
+    archivo = _pick(m, 'archivo', 'ARCHIVO PDF', 'filename', 'file_name', 'ruta', default='')
+
+    return {
+        'placa': str(placa),
+        'conductor': str(conductor),
+        'origen': str(origen),
+        'destino': str(destino),
+        'fecha inicio': str(fecha_viaje),
+        'mes': str(mes),
+        'load_id': str(load_id),
+        'kof': str(kof),
+        'remesa': str(remesa),
+        'empresa': str(empresa),
+        'valormanifiesto': str(valor_flete),
+        'archivo': str(archivo),
+    }
+
+
 def crear_excel(lista_archivos_excel, carpeta_original="", username=None):
     """
     Crea un archivo Excel con los datos de manifiestos procesados.
@@ -40,11 +90,10 @@ def crear_excel(lista_archivos_excel, carpeta_original="", username=None):
             'valormanifiesto',  # VALOR FLETE
             'archivo'  # RUTA DEL ARCHIVO PDF
         ]
-        
-        # Crear DataFrame con los datos
-        df = pd.DataFrame(lista_archivos_excel)
-        
-        # Filtrar solo los campos requeridos y mantener el orden
+
+        # Normalizar filas para tolerar variantes de campos
+        rows = [_normalize_excel_row(m) for m in lista_archivos_excel]
+        df = pd.DataFrame(rows)
         df_filtrado = df[campos_requeridos]
         
         # Renombrar columnas para que coincidan con los nombres deseados
@@ -140,11 +189,10 @@ def crear_excel_en_memoria(lista_archivos_excel, carpeta_original=""):
             'valormanifiesto',  # VALOR FLETE
             'archivo'  # RUTA DEL ARCHIVO PDF
         ]
-        
-        # Crear DataFrame con los datos
-        df = pd.DataFrame(lista_archivos_excel)
-        
-        # Filtrar solo los campos requeridos y mantener el orden
+
+        # Normalizar filas para tolerar variantes de campos
+        rows = [_normalize_excel_row(m) for m in lista_archivos_excel]
+        df = pd.DataFrame(rows)
         df_filtrado = df[campos_requeridos]
         
         # Renombrar columnas para que coincidan con los nombres deseados

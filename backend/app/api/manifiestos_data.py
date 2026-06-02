@@ -2,7 +2,7 @@
 API de consulta de datos procesados (PDFs, manifiestos, conductores)
 """
 from flask import Blueprint, request, jsonify
-from .manifiestos_utils import login_required_api, get_current_user
+from .manifiestos_utils import login_required_api, get_current_user, normalize_pdf_record
 
 bp = Blueprint('manifiestos_data', __name__)
 
@@ -46,7 +46,7 @@ def get_pdfs():
             else:
                 pdfs = repo.get_pdfs_by_username(username)
             
-            return jsonify({'success': True, 'pdfs': pdfs})
+            return jsonify({'success': True, 'pdfs': [normalize_pdf_record(p) for p in pdfs]})
         except ImportError:
             return jsonify({'success': False, 'error': 'Firebase no está disponible'}), 503
     except Exception as e:

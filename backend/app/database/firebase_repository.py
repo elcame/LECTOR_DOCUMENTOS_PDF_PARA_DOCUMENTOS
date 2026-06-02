@@ -118,42 +118,56 @@ class FirebaseRepository:
             print(f"Error al eliminar documento {doc_id}: {e}")
             return False
     
-    def get_all(self, filters: Optional[List[tuple]] = None, 
-                order_by: Optional[str] = None, 
-                limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    # Límite de seguridad cuando no se especifica uno explícito.
+    # Evita lecturas/costos descontrolados si una colección crece sin límite.
+    DEFAULT_MAX_RESULTS = 2000
+
+    def get_all(self, filters: Optional[List[tuple]] = None,
+                order_by: Optional[str] = None,
+                limit: Optional[int] = None,
+                allow_unbounded: bool = False) -> List[Dict[str, Any]]:
         """
-        Obtiene todos los documentos con filtros opcionales
-        
+        Obtiene todos los documentos con filtros opcionales.
+
         Args:
-            filters: Lista de tuplas (campo, operador, valor) para filtrar
-            order_by: Campo por el que ordenar
-            limit: Límite de documentos a retornar
-        
+            filters: Lista de tuplas (campo, operador, valor) para filtrar.
+            order_by: Campo por el que ordenar.
+            limit: Límite explícito de documentos.
+            allow_unbounded: Si es True, no aplica DEFAULT_MAX_RESULTS cuando
+                `limit` es None. Usar sólo si la colección es pequeña por diseño.
+
         Returns:
-            Lista de documentos
+            Lista de documentos.
         """
         query = self.collection
-        
-        # Aplicar filtros
+
         if filters:
             for field, operator, value in filters:
                 query = query.where(filter=FieldFilter(field, operator, value))
-        
-        # Ordenar
+
         if order_by:
             query = query.order_by(order_by)
-        
-        # Limitar
-        if limit:
-            query = query.limit(limit)
-        
+
+        effective_limit = limit
+        if effective_limit is None and not allow_unbounded:
+            effective_limit = self.DEFAULT_MAX_RESULTS
+
+        if effective_limit:
+            query = query.limit(effective_limit)
+
         docs = query.stream()
         results = []
         for doc in docs:
             data = doc.to_dict()
             data['id'] = doc.id
             results.append(data)
-        
+
+        if effective_limit and len(results) == effective_limit and limit is None:
+            print(
+                f"[WARN] {self.collection_name}: get_all alcanzó el límite por defecto "
+                f"({effective_limit}). Considera pasar 'limit' o paginar."
+            )
+
         return results
     
     def find_one(self, filters: List[tuple]) -> Optional[Dict[str, Any]]:

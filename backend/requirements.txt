@@ -23,11 +23,21 @@ Pillow>=10.0.0
 firebase-admin>=6.0.0
 google-cloud-firestore>=2.0.0
 
+# Google Calendar OAuth
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+cryptography>=42.0.0
+
 # Utilities
 python-dotenv>=1.0.0
 
 # JWT Authentication
 PyJWT>=2.8.0
+
+# Password hashing (bcrypt) y rate limiting
+bcrypt>=4.1.0
+Flask-Limiter>=3.5.0
 
 # Production server
 gunicorn>=21.0.0

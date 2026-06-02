@@ -187,6 +187,7 @@ export default function AppShell({ children }) {
         <SectionTitle collapsed={collapsed}>General</SectionTitle>
         <div className="space-y-1">
           <SideItem to="/dashboard" label="Dashboard" icon="🏠" collapsed={collapsed} end />
+          <SideItem to="/productividad" label="Productividad" icon="✅" collapsed={collapsed} />
           {!isConductor && <SideItem to="/carros" label="Carros" icon="🚚" collapsed={collapsed} />}
           {!isConductor && <SideItem to="/gps" label="GPS" icon="📍" collapsed={collapsed} />}
         </div>

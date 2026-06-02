@@ -14,6 +14,7 @@ import Carros from './pages/Carros'
 import Administrador from './pages/Administrador'
 import GPSTracking from './pages/GPSTracking'
 import Proveedores from './pages/Proveedores'
+import Productividad from './pages/Productividad'
 import AppShell from './components/layout/AppShell'
 
 function App() {
@@ -31,6 +32,10 @@ function App() {
             <Route
               path={ROUTES.DASHBOARD}
               element={<ProtectedRoute><AppShell><Dashboard /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.PRODUCTIVIDAD}
+              element={<ProtectedRoute><AppShell><Productividad /></AppShell></ProtectedRoute>}
             />
             <Route
               path={ROUTES.MANIFIESTOS}

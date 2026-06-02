@@ -4,9 +4,15 @@ __pycache__/
 *$py.class
 *.so
 .Python
+
+# Virtual environments (todas las variantes comunes)
 venv/
+venv*/
 env/
 ENV/
+.venv/
+.venv*/
+
 *.egg-info/
 dist/
 build/
@@ -35,6 +41,8 @@ frontend/.firebase/
 
 # Secrets / Credentials (never commit)
 backend/app/config/firebase-credentials.json
+backend/app/config/google-oauth-client.json
+backend/.env
 
 # IDE
 .vscode/

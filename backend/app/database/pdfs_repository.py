@@ -55,50 +55,42 @@ class PDFsRepository(FirebaseRepository):
             print(f"Error al crear registro de PDF: {e}")
             return False
     
-    def get_pdfs_by_folder(self, username: str, folder_name: str) -> List[Dict]:
+    # Límite por defecto para queries por usuario/carpeta. Se puede sobrescribir
+    # pasando `limit=` o `limit=0` (sin límite explícito).
+    DEFAULT_PDF_QUERY_LIMIT = 1000
+
+    def get_pdfs_by_folder(self, username: str, folder_name: str,
+                           limit: Optional[int] = None) -> List[Dict]:
         """
-        Obtiene todos los PDFs de una carpeta
-        
-        Args:
-            username: Nombre de usuario
-            folder_name: Nombre de la carpeta
-        
-        Returns:
-            Lista de PDFs
+        Obtiene los PDFs de una carpeta (con límite por defecto para evitar costos).
         """
         try:
-            # Intentar usar FieldFilter (nuevo formato) para evitar warnings
             try:
                 from google.cloud.firestore import FieldFilter
                 query = self.collection.where(filter=FieldFilter('username', '==', username.lower()))\
                                        .where(filter=FieldFilter('folder_name', '==', folder_name))\
                                        .where(filter=FieldFilter('active', '==', True))
             except (ImportError, AttributeError):
-                # Fallback: usar método tradicional (puede generar warnings pero funciona)
                 query = self.collection.where('username', '==', username.lower())\
                                        .where('folder_name', '==', folder_name)\
                                        .where('active', '==', True)
-            
-            # No usar order_by para evitar necesidad de índices compuestos
-            # Ordenar en memoria después
+
+            effective_limit = limit if limit is not None else self.DEFAULT_PDF_QUERY_LIMIT
+            if effective_limit and effective_limit > 0:
+                query = query.limit(effective_limit)
+
             docs = query.stream()
             pdfs = [{'id': doc.id, **doc.to_dict()} for doc in docs]
-            # Ordenar por uploaded_at en memoria
             pdfs.sort(key=lambda x: x.get('uploaded_at', ''))
             return pdfs
         except Exception as e:
             print(f"Error al obtener PDFs por carpeta: {e}")
             return []
-    
-    def get_pdfs_by_username(self, username: str) -> List[Dict]:
+
+    def get_pdfs_by_username(self, username: str,
+                             limit: Optional[int] = None) -> List[Dict]:
         """
-        Obtiene todos los PDFs de un usuario (1 lectura Firestore).
-        
-        Args:
-            username: Nombre de usuario
-        
-        Returns:
-            Lista de PDFs
+        Obtiene los PDFs de un usuario (con límite por defecto para evitar costos).
         """
         try:
             try:
@@ -108,7 +100,11 @@ class PDFsRepository(FirebaseRepository):
             except (ImportError, AttributeError):
                 query = self.collection.where('username', '==', username.lower())\
                                        .where('active', '==', True)
-            
+
+            effective_limit = limit if limit is not None else self.DEFAULT_PDF_QUERY_LIMIT
+            if effective_limit and effective_limit > 0:
+                query = query.limit(effective_limit)
+
             docs = query.stream()
             pdfs = [{'id': doc.id, **doc.to_dict()} for doc in docs]
             pdfs = [p for p in pdfs if p.get('active', False)]

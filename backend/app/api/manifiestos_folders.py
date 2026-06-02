@@ -4,7 +4,7 @@ API de gestión de carpetas y overview de manifiestos
 import os
 import shutil
 from flask import Blueprint, request, jsonify
-from .manifiestos_utils import login_required_api, get_current_user
+from .manifiestos_utils import login_required_api, get_current_user, normalize_pdf_record
 
 bp = Blueprint('manifiestos_folders', __name__)
 
@@ -85,7 +85,7 @@ def get_overview():
             return jsonify({
                 'success': True,
                 'data': {
-                    'pdfs': pdfs,
+                    'pdfs': [normalize_pdf_record(p) for p in pdfs],
                     'folders': folders,
                     'storage': storage_stats
                 }

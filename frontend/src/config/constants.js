@@ -21,7 +21,23 @@ export const ROUTES = {
   ROLES: '/roles',
   USUARIOS_FIREBASE: '/usuarios-firebase',
   GPS_TRACKING: '/gps',
+  PRODUCTIVIDAD: '/productividad',
 }
+
+export const GTD_LISTS = [
+  { id: 'inbox', label: 'Inbox', icon: '📥' },
+  { id: 'today', label: 'Hoy', icon: '☀️' },
+  { id: 'next', label: 'Próximo', icon: '⏭️' },
+  { id: 'someday', label: 'Algún día', icon: '🌤️' },
+  { id: 'done', label: 'Hecho', icon: '✅' },
+]
+
+export const TASK_PRIORITIES = [
+  { id: 'low', label: 'Baja', color: 'bg-slate-100 text-slate-700' },
+  { id: 'medium', label: 'Media', color: 'bg-blue-100 text-blue-800' },
+  { id: 'high', label: 'Alta', color: 'bg-amber-100 text-amber-800' },
+  { id: 'urgent', label: 'Urgente', color: 'bg-red-100 text-red-800' },
+]
 
 export const USER_ROLES = {
   SUPER_ADMIN: 'super_admin',

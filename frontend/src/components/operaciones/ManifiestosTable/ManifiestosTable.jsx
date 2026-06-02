@@ -275,11 +275,7 @@ export default function ManifiestosTable({ folderName = null, refreshTrigger = 0
 
   const handleVerManifiesto = (manifiesto) => {
     if (!manifiesto?.archivo || !manifiesto?.folder_name) return
-    const url = manifiestosService.getPDFViewUrl(
-      manifiesto.archivo,
-      manifiesto.folder_name
-    )
-    window.open(url, '_blank', 'noopener,noreferrer')
+    manifiestosService.openPDFInNewTab(manifiesto.archivo, manifiesto.folder_name)
   }
 
   // Loading state

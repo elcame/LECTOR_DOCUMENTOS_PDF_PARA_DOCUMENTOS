@@ -45,8 +45,7 @@ export default function PDFList({ pdfs = [], folderName = null, loading = false,
 
   const handleOpenPdfInNewTab = (pdf) => {
     if (!pdf?.filename || !pdf?.folder_name) return
-    const url = manifiestosService.getPDFViewUrl(pdf.filename, pdf.folder_name)
-    window.open(url, '_blank', 'noopener,noreferrer')
+    manifiestosService.openPDFInNewTab(pdf.filename, pdf.folder_name)
   }
 
   const handleMergeSuccess = () => {
@@ -223,12 +222,12 @@ export default function PDFList({ pdfs = [], folderName = null, loading = false,
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm text-gray-600">
-                      {formatFileSize(pdf.size)}
+                      {formatFileSize(pdf.size ?? pdf.file_size)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm text-gray-600">
-                      {pdf.page_count || '-'}
+                      {pdf.page_count ?? pdf.total_pages ?? '-'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">

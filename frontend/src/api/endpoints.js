@@ -19,9 +19,9 @@ export const ENDPOINTS = {
     UPLOAD_FILE: '/manifiestos/upload_file',
     PROCESS_FOLDER: '/manifiestos/process_folder',
     PDFS: '/manifiestos/pdfs',
-    PDF_PAGES: (filename) => `/manifiestos/pdf/${filename}/pages`,
-    PDF_THUMBNAIL: (filename) => `/manifiestos/pdf/${filename}/thumbnail`,
-    PDF_DOWNLOAD: (filename) => `/manifiestos/pdf/${filename}/download`,
+    PDF_PAGES: (filename) => `/manifiestos/pdf/${encodeURIComponent(filename)}/pages`,
+    PDF_THUMBNAIL: (filename) => `/manifiestos/pdf/${encodeURIComponent(filename)}/thumbnail`,
+    PDF_DOWNLOAD: (filename) => `/manifiestos/pdf/${encodeURIComponent(filename)}/download`,
     PDF_MERGE: '/manifiestos/pdf/merge',
     PDF_DELETE: '/manifiestos/pdf/delete',
     PDF_DELETE_PAGES: '/manifiestos/pdf/delete-pages',
@@ -127,6 +127,18 @@ export const ENDPOINTS = {
   PROPIETARIOS: {
     BASE: '/propietarios',
     BY_ID: (id) => `/propietarios/${id}`,
+  },
+
+  // Productividad GTD + Google Calendar
+  PRODUCTIVIDAD: {
+    TASKS: '/productividad/tasks',
+    TASK: (id) => `/productividad/tasks/${id}`,
+    TASK_COMPLETE: (id) => `/productividad/tasks/${id}/complete`,
+    STATS_DAILY: '/productividad/stats/daily',
+    GOOGLE_STATUS: '/productividad/google/status',
+    GOOGLE_AUTH_URL: '/productividad/google/auth-url',
+    GOOGLE_DISCONNECT: '/productividad/google/disconnect',
+    CALENDAR_EVENTS: '/productividad/calendar/events',
   },
 
   // GPS Tracking

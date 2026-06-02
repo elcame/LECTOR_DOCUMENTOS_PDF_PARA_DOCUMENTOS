@@ -92,16 +92,9 @@ def init_auth():
 
 
 def hash_password(password: str) -> str:
-    """
-    Genera un hash SHA-256 de la contraseña
-    
-    Args:
-        password (str): Contraseña en texto plano
-    
-    Returns:
-        str: Hash de la contraseña
-    """
-    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+    """Genera un hash bcrypt de la contraseña (delega al módulo password_security)."""
+    from app.modules.password_security import hash_password as _hash
+    return _hash(password)
 
 
 def register_user(username: str, password: str, email: str = '', full_name: str = '') -> Dict[str, any]:
@@ -169,11 +162,20 @@ def verify_user(username: str, password: str) -> Dict[str, any]:
     if not user:
         return {'success': False, 'message': 'Usuario o contraseña incorrectos'}
     
-    # Verificar contraseña
-    password_hash = hash_password(password)
-    if user['password_hash'] != password_hash:
+    # Verificar contraseña (bcrypt o SHA-256 legacy)
+    from app.modules.password_security import verify_password as _verify, needs_rehash as _needs_rehash
+    stored_hash = user.get('password_hash') or ''
+    if not _verify(password, stored_hash):
         return {'success': False, 'message': 'Usuario o contraseña incorrectos'}
-    
+
+    # Migración transparente a bcrypt si todavía está en SHA-256
+    if _needs_rehash(stored_hash):
+        try:
+            from modules.database import update_user_password_hash as _update_hash  # type: ignore
+            _update_hash(username, hash_password(password))
+        except Exception:
+            pass
+
     # Actualizar último login
     db_update_last_login(username)
     

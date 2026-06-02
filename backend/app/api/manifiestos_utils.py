@@ -61,6 +61,19 @@ def get_user_base_folder():
     return get_user_folder(username)
 
 
+def normalize_pdf_record(pdf: dict) -> dict:
+    """Normaliza campos de PDF de Firebase para el frontend."""
+    if not pdf:
+        return pdf
+    result = dict(pdf)
+    result['size'] = pdf.get('file_size', pdf.get('size', 0)) or 0
+    pages = pdf.get('total_pages', pdf.get('page_count'))
+    if pages is not None:
+        result['page_count'] = pages
+        result['total_pages'] = pages
+    return result
+
+
 def sanitize_filename(filename: str) -> str:
     """
     Sanitiza un nombre de archivo eliminando caracteres peligrosos

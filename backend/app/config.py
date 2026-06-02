@@ -4,6 +4,11 @@ Configuración de la aplicación
 import os
 from pathlib import Path
 
+from app.google_oauth_env import resolve_google_oauth
+
+_oauth_id, _oauth_secret, _oauth_redirect = resolve_google_oauth()
+
+
 class Config:
     """Configuración base"""
     # IMPORTANTE: En producción (Cloud Run), configurar SECRET_KEY como variable de entorno
@@ -33,6 +38,13 @@ class Config:
     FIREBASE_CREDENTIALS_PATH = Path(__file__).parent / 'config' / 'firebase-credentials.json'
     FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', '')
     FIREBASE_STORAGE_BUCKET = os.environ.get('FIREBASE_STORAGE_BUCKET', 'almacenamiento-acr.firebasestorage.app')
+
+    # Google Calendar OAuth (productividad) — .env o backend/app/config/google-oauth-client.json
+    GOOGLE_OAUTH_CLIENT_ID = _oauth_id
+    GOOGLE_OAUTH_CLIENT_SECRET = _oauth_secret
+    GOOGLE_OAUTH_REDIRECT_URI = _oauth_redirect
+    FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+    GOOGLE_CALENDAR_SCOPES = ['https://www.googleapis.com/auth/calendar.events']
     
     @staticmethod
     def init_app(app):

@@ -9,8 +9,8 @@ cd /d "%~dp0"
 REM Ir a frontend
 cd frontend
 
-REM Instalar dependencias si no existen
-if not exist "node_modules" (
+REM Instalar dependencias si faltan o la instalacion esta incompleta
+if not exist "node_modules\.bin\vite.cmd" (
     echo Instalando dependencias...
     call npm install
 )

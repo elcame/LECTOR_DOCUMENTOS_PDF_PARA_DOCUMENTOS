@@ -55,6 +55,23 @@
       ]
     },
     {
+      "collectionGroup": "productivity_tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "username", "order": "ASCENDING" },
+        { "fieldPath": "list", "order": "ASCENDING" },
+        { "fieldPath": "updated_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "productivity_tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "username", "order": "ASCENDING" },
+        { "fieldPath": "scheduled_start", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "expense_types",
       "queryScope": "COLLECTION",
       "fields": [

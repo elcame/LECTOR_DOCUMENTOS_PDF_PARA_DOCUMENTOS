@@ -3,6 +3,7 @@
  */
 import api from '../api'
 import { ENDPOINTS } from '../api/endpoints'
+import { buildAuthenticatedApiUrl } from '../utils/authenticatedApiUrl'
 
 export const manifiestosService = {
   /**
@@ -152,23 +153,36 @@ export const manifiestosService = {
    * @returns {string} URL de la miniatura
    */
   getPDFThumbnailUrl(filename, folderName, pageNumber = 0) {
-    const baseURL = api.defaults.baseURL || window.location.origin
-    const params = new URLSearchParams({ 
-      folder_name: folderName,
-      page: pageNumber
-    })
-    // La autenticación se maneja mediante cookies (withCredentials: true)
-    return `${baseURL}${ENDPOINTS.MANIFIESTOS.PDF_THUMBNAIL(filename)}?${params.toString()}`
+    return buildAuthenticatedApiUrl(
+      ENDPOINTS.MANIFIESTOS.PDF_THUMBNAIL(filename),
+      { folder_name: folderName, page: pageNumber + 1 }
+    )
   },
 
   /**
-   * Obtener URL para abrir/ver un PDF completo en el navegador.
-   * Se apoya en el endpoint de descarga, pasando el folder_name como query.
+   * URL autenticada para abrir/ver un PDF (incluye JWT en query para cross-origin).
    */
   getPDFViewUrl(filename, folderName) {
-    const baseURL = api.defaults.baseURL || window.location.origin
-    const params = new URLSearchParams({ folder_name: folderName })
-    return `${baseURL}${ENDPOINTS.MANIFIESTOS.PDF_DOWNLOAD(filename)}?${params.toString()}`
+    return buildAuthenticatedApiUrl(
+      ENDPOINTS.MANIFIESTOS.PDF_DOWNLOAD(filename),
+      { folder_name: folderName }
+    )
+  },
+
+  /**
+   * Abre un PDF en nueva pestaña con navegación directa (síncrono en el clic).
+   * Usa URL autenticada con token; evita bloqueo de popups en Opera/Chrome.
+   */
+  openPDFInNewTab(filename, folderName) {
+    const url = this.getPDFViewUrl(filename, folderName)
+    const link = document.createElement('a')
+    link.href = url
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    return true
   },
 
   /**

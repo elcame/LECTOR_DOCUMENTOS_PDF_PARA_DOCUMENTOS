@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 from flask import Blueprint, request, jsonify, session, current_app
 from functools import wraps
-import hashlib
 import jwt
 from datetime import datetime, timedelta, timezone
 
@@ -18,6 +17,13 @@ try:
     from app.database.roles_repository import RolesRepository
 except ImportError as e:
     print(f"Advertencia: Error al importar módulos en auth.py: {e}")
+
+from app.modules.password_security import (
+    hash_password,
+    verify_password,
+    needs_rehash,
+)
+from app.modules.rate_limit import limiter
 
 bp = Blueprint('auth', __name__)
 
@@ -46,48 +52,19 @@ def decode_token(token):
 
 def get_token_from_header():
     """Extrae el token del header Authorization o query parameter"""
-    # Debug: Imprimir toda la información de la request
-    print(f"DEBUG BACKEND - request.full_path: {request.full_path}")
-    print(f"DEBUG BACKEND - request.query_string: {request.query_string}")
-    print(f"DEBUG BACKEND - request.args: {dict(request.args)}")
-    print(f"DEBUG BACKEND - request.url: {request.url}")
-    
-    # Primero intentar header Authorization
     auth_header = request.headers.get('Authorization')
-    print(f"DEBUG BACKEND - Authorization header: {auth_header}")
     if auth_header and auth_header.startswith('Bearer '):
-        token = auth_header.split(' ')[1]
-        print(f"DEBUG BACKEND - Token extraído de header: {token[:50]}...")
-        return token
-    
-    # Si no hay header, intentar query parameter
-    token = request.args.get('token')
-    print(f"DEBUG BACKEND - Token from request.args.get('token'): {token}")
-    if token:
-        print(f"DEBUG BACKEND - Token extraído de query param: {token[:50]}...")
-        return token
-    
-    print(f"DEBUG BACKEND - No se encontró token en header ni query params")
-    return None
+        return auth_header.split(' ')[1]
+    return request.args.get('token')
 
-def hash_password(password: str) -> str:
-    """Hashea una contraseña"""
-    return hashlib.sha256(password.encode()).hexdigest()
 
 def is_authenticated() -> bool:
     """Verifica si el usuario está autenticado (via JWT o sesión legacy)"""
-    print(f"DEBUG BACKEND - is_authenticated() llamado")
-    # Primero intentar JWT
     token = get_token_from_header()
-    print(f"DEBUG BACKEND - Token from header: {'SÍ' if token else 'NO'}")
     if token:
         payload = decode_token(token)
-        print(f"DEBUG BACKEND - Payload decodificado: {payload}")
         if payload and 'username' in payload:
             return True
-    # Fallback a sesión legacy
-    session_user = session.get('username')
-    print(f"DEBUG BACKEND - Session username: {session_user}")
     return 'username' in session and session.get('username') is not None
 
 def get_current_user():
@@ -102,6 +79,7 @@ def get_current_user():
     return session.get('username')
 
 @bp.route('/login', methods=['POST'])
+@limiter.limit("5 per minute; 30 per hour")
 def login():
     """Iniciar sesión con Firebase"""
     try:
@@ -132,14 +110,21 @@ def login():
                 'message': 'Usuario inactivo. Contacta al administrador.'
             }), 403
         
-        # Verificar contraseña
-        password_hash = hash_password(password)
-        if usuario.get('password_hash') != password_hash:
+        # Verificar contraseña (bcrypt o SHA-256 legacy)
+        stored_hash = usuario.get('password_hash') or ''
+        if not verify_password(password, stored_hash):
             return jsonify({
                 'success': False,
                 'message': 'Usuario o contraseña incorrectos'
             }), 401
-        
+
+        # Migración transparente a bcrypt si todavía está en SHA-256
+        if needs_rehash(stored_hash):
+            try:
+                repo.update_usuario(username, {'password_hash': hash_password(password)})
+            except Exception as e:
+                current_app.logger.warning(f'No se pudo migrar hash a bcrypt para {username}: {e}')
+
         # Actualizar último login
         repo.update_usuario(username, {'last_login': repo._get_timestamp()})
         
@@ -181,6 +166,7 @@ def login():
         }), 500
 
 @bp.route('/register', methods=['POST'])
+@limiter.limit("3 per minute; 10 per hour")
 def register():
     """Registrar nuevo usuario en Firebase"""
     try:

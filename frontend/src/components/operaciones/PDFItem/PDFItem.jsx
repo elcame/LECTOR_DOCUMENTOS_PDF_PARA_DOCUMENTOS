@@ -1,115 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { manifiestosService } from '../../../services/manifiestosService'
-import api from '../../../api'
-import { ENDPOINTS } from '../../../api/endpoints'
-
-// Utilidades de caché
-const CACHE_PREFIX = 'thumb_'
-const MAX_CACHE_AGE = 7 * 24 * 60 * 60 * 1000 // 7 días en ms
-
-const getCacheKey = (filename, folderName, pageNum) => {
-  return `${CACHE_PREFIX}${filename}_${folderName}_${pageNum}`
-}
-
-const getCachedThumbnail = (cacheKey) => {
-  try {
-    const cached = sessionStorage.getItem(cacheKey)
-    if (!cached) return null
-    
-    const data = JSON.parse(cached)
-    // Verificar si no está muy antiguo
-    if (Date.now() - data.timestamp > MAX_CACHE_AGE) {
-      sessionStorage.removeItem(cacheKey)
-      return null
-    }
-    
-    // Si es un blob URL, no confiar en el caché porque puede haber sido revocado
-    // Solo usar caché si es una URL base64 o data URL
-    if (data.url && (data.url.startsWith('data:') || data.url.startsWith('http'))) {
-      return data.url
-    }
-    
-    // Para blob URLs, no usar caché directamente
-    return null
-  } catch (err) {
-    return null
-  }
-}
-
-const setCachedThumbnail = (cacheKey, url) => {
-  try {
-    // Solo guardar en caché si NO es un blob URL (los blob URLs se revocan)
-    // Los blob URLs son temporales y no deben guardarse en caché
-    if (url && !url.startsWith('blob:')) {
-      sessionStorage.setItem(cacheKey, JSON.stringify({
-        url,
-        timestamp: Date.now()
-      }))
-    }
-    // Para blob URLs, no guardar en caché - se recargarán desde el servidor si es necesario
-  } catch (err) {
-    // SessionStorage lleno, limpiar algunas entradas antiguas
-    cleanOldCache()
-  }
-}
-
-const cleanOldCache = () => {
-  try {
-    const keys = Object.keys(sessionStorage)
-    const thumbKeys = keys.filter(k => k.startsWith(CACHE_PREFIX))
-    
-    // Limpiar blob URLs del caché (son temporales y no deberían estar ahí)
-    thumbKeys.forEach(key => {
-      try {
-        const data = JSON.parse(sessionStorage.getItem(key) || '{}')
-        if (data.url && data.url.startsWith('blob:')) {
-          sessionStorage.removeItem(key)
-        }
-      } catch (err) {
-        // Si hay error al parsear, eliminar la entrada
-        sessionStorage.removeItem(key)
-      }
-    })
-    
-    // Ordenar por antigüedad y eliminar las más antiguas
-    const remainingKeys = keys.filter(k => k.startsWith(CACHE_PREFIX))
-    const entries = remainingKeys.map(key => {
-      try {
-        const data = JSON.parse(sessionStorage.getItem(key) || '{}')
-        return { key, timestamp: data.timestamp || 0 }
-      } catch (err) {
-        return { key, timestamp: 0 }
-      }
-    }).sort((a, b) => a.timestamp - b.timestamp)
-    
-    // Eliminar el 25% más antiguo
-    const toRemove = Math.ceil(entries.length * 0.25)
-    for (let i = 0; i < toRemove; i++) {
-      sessionStorage.removeItem(entries[i].key)
-    }
-  } catch (err) {
-    console.error('Error limpiando caché:', err)
-  }
-}
-
-// Limpiar blob URLs del caché al cargar el módulo
-if (typeof window !== 'undefined' && window.sessionStorage) {
-  try {
-    const keys = Object.keys(sessionStorage)
-    keys.filter(k => k.startsWith(CACHE_PREFIX)).forEach(key => {
-      try {
-        const data = JSON.parse(sessionStorage.getItem(key) || '{}')
-        if (data.url && data.url.startsWith('blob:')) {
-          sessionStorage.removeItem(key)
-        }
-      } catch (err) {
-        // Ignorar errores
-      }
-    })
-  } catch (err) {
-    // Ignorar errores
-  }
-}
+import { loadThumbnail } from '../../../utils/thumbnailCache'
 
 // Componente para cada miniatura con mejor manejo de errores
 function ThumbnailItem({ thumb, pdf, onRetry }) {
@@ -232,8 +123,6 @@ export default function PDFItem({ pdf, isSelected, onSelect, formatFileSize }) {
   const abortControllerRef = useRef(null)
   const pagesAbortRef = useRef(null)
   const mountedRef = useRef(true)
-  const thumbnailsRef = useRef([])
-  thumbnailsRef.current = thumbnails
 
   // Si el PDF ya trae total_pages (desde Firebase/overview), no llamar getPDFPages
   useEffect(() => {
@@ -297,119 +186,39 @@ export default function PDFItem({ pdf, isSelected, onSelect, formatFileSize }) {
     try {
       setLoadingThumbnails(true)
       setLoadingProgress(0)
-      
+
       const totalPages = pdfInfo.total_pages
       const maxThumbnails = Math.min(totalPages, 10)
-      const batchSize = 3 // Cargar 3 a la vez
       const thumbnailsArray = []
-      
-      // Cancelar requests anteriores si existen
+
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
       }
-      
-      // Crear nuevo controller
       abortControllerRef.current = new AbortController()
-      
-      // Cargar en lotes
-      for (let i = 0; i < maxThumbnails; i += batchSize) {
-        if (!mountedRef.current) break
-        
-        const batchPromises = []
-        const end = Math.min(i + batchSize, maxThumbnails)
-        
-        for (let j = i; j < end; j++) {
-          const pageNum = j
-          const cacheKey = getCacheKey(pdf.filename, pdf.folder_name, pageNum)
-          
-          // Verificar caché primero
-          const cached = getCachedThumbnail(cacheKey)
-          
-          if (cached && !cached.startsWith('blob:')) {
-            // Usar desde caché solo si NO es un blob URL
-            // Los blob URLs del caché pueden haber sido revocados
-            batchPromises.push(
-              Promise.resolve({ pageNumber: pageNum + 1, url: cached, fromCache: true })
-            )
-          } else {
-            // Cargar desde servidor
-            batchPromises.push(
-              api.get(
-                ENDPOINTS.MANIFIESTOS.PDF_THUMBNAIL(pdf.filename),
-                {
-                  params: { folder_name: pdf.folder_name, page: pageNum },
-                  responseType: 'blob',
-                  signal: abortControllerRef.current.signal,
-                  timeout: 15000
-                }
-              ).then(response => {
-                // Verificar que la respuesta sea una imagen válida
-                if (!response || !response.data) {
-                  console.warn(`Respuesta inválida para página ${pageNum + 1}`)
-                  return null
-                }
-                
-                // Verificar tamaño del blob
-                if (response.data.size === 0) {
-                  console.warn(`Respuesta vacía para página ${pageNum + 1}`)
-                  return null
-                }
-                
-                // Verificar que sea realmente una imagen
-                const contentType = response.headers['content-type'] || response.data.type || ''
-                if (!contentType.startsWith('image/')) {
-                  console.warn(`Respuesta no es una imagen para página ${pageNum + 1}, tipo: ${contentType}`)
-                  return null
-                }
-                
-                try {
-                  // Crear blob URL
-                  const blobUrl = URL.createObjectURL(response.data)
-                  
-                  // Verificar que el blob URL sea válido
-                  if (!blobUrl || !blobUrl.startsWith('blob:')) {
-                    console.warn(`Error al crear blob URL para página ${pageNum + 1}`)
-                    return null
-                  }
-                  
-                  return { pageNumber: pageNum + 1, url: blobUrl, fromCache: false }
-                } catch (blobError) {
-                  console.error(`Error al crear blob URL para página ${pageNum + 1}:`, blobError)
-                  return null
-                }
-              }).catch(err => {
-                const isCancel = err?.code === 'CANCELED' || err?.name === 'AbortError' || err?.name === 'CanceledError'
-                if (!isCancel) {
-                  if (err?.code === 'NETWORK_ERROR' || err?.code === 'TIMEOUT') {
-                    console.warn(`Miniatura pág. ${pageNum + 1}: ${err?.message || 'error de red'}`)
-                  } else if (err?.status === 404 || err?.status === 500) {
-                    console.warn(`Miniatura pág. ${pageNum + 1}: error ${err.status}`)
-                  } else {
-                    console.warn(`Error al cargar miniatura de página ${pageNum + 1}:`, err?.message || err)
-                  }
-                }
-                return null
-              })
+      const { signal } = abortControllerRef.current
+
+      // Lanzamos todas las peticiones en paralelo. La concurrencia real
+      // está controlada globalmente por el throttle del thumbnailCache.
+      let completed = 0
+      const tasks = Array.from({ length: maxThumbnails }, (_, pageNum) =>
+        loadThumbnail(pdf.filename, pdf.folder_name, pageNum, { signal }).then((url) => {
+          if (!mountedRef.current || signal.aborted) return null
+          completed++
+          setLoadingProgress(Math.round((completed / maxThumbnails) * 100))
+          if (!url) return null
+          const thumb = { pageNumber: pageNum + 1, url, fromCache: false }
+          thumbnailsArray.push(thumb)
+          // Mantener orden por número de página al renderizar
+          if (mountedRef.current) {
+            setThumbnails(
+              [...thumbnailsArray].sort((a, b) => a.pageNumber - b.pageNumber)
             )
           }
-        }
-        
-        // Esperar el lote actual
-        const batchResults = await Promise.all(batchPromises)
-        const validThumbs = batchResults.filter(t => t !== null)
-        
-        thumbnailsArray.push(...validThumbs)
-        
-        if (mountedRef.current) {
-          setThumbnails([...thumbnailsArray])
-          setLoadingProgress(Math.round((thumbnailsArray.length / maxThumbnails) * 100))
-        }
-        
-        // Pequeña pausa entre lotes para no saturar
-        if (i + batchSize < maxThumbnails && mountedRef.current) {
-          await new Promise(resolve => setTimeout(resolve, 150))
-        }
-      }
+          return thumb
+        })
+      )
+
+      await Promise.all(tasks)
     } catch (err) {
       const isCancel = err?.code === 'CANCELED' || err?.name === 'AbortError' || err?.name === 'CanceledError'
       if (!isCancel) {
@@ -423,17 +232,9 @@ export default function PDFItem({ pdf, isSelected, onSelect, formatFileSize }) {
     }
   }
 
-  // Revocar blob URLs solo al desmontar (no al cambiar thumbnails: los lotes
-  // reutilizan las miniaturas anteriores; revocarlas antes rompe las <img>).
-  useEffect(() => {
-    return () => {
-      thumbnailsRef.current.forEach(thumb => {
-        if (thumb?.url?.startsWith('blob:')) {
-          try { URL.revokeObjectURL(thumb.url) } catch (_) {}
-        }
-      })
-    }
-  }, [])
+  // Las blob URLs viven en el caché global (thumbnailCache) y se revocan
+  // automáticamente cuando son evictadas por LRU. No revocar aquí porque
+  // otros PDFItem pueden estar reutilizando la misma miniatura.
 
   const handleDownload = async (e) => {
     e.stopPropagation() // Evitar que se active el onSelect del contenedor

@@ -153,38 +153,22 @@ class ManifiestosRepository(FirebaseRepository):
             print(traceback.format_exc())
             return (False, f"Error al guardar manifiesto: {str(e)}", None)
     
-    def get_all_manifiestos(self) -> List[Dict]:
-        """
-        Obtiene todos los manifiestos activos sin filtros
-        
-        Returns:
-            Lista de todos los manifiestos activos
-        """
+    def get_all_manifiestos(self, limit: Optional[int] = None) -> List[Dict]:
+        """Obtiene manifiestos activos. Pasa `limit` para paginar; por defecto
+        aplica DEFAULT_MAX_RESULTS desde la clase base."""
         try:
             filters = [('active', '==', True)]
-            results = self.get_all(filters=filters, order_by='fecha_procesamiento')
-            return results
+            return self.get_all(filters=filters, order_by='fecha_procesamiento', limit=limit)
         except Exception as e:
             print(f"Error al obtener todos los manifiestos: {e}")
             return []
-    
-    def get_manifiestos(self, username: str = '', folder_name: str = '', 
-                       load_id: Optional[str] = None, remesa: Optional[str] = None) -> List[Dict]:
-        """
-        Obtiene manifiestos con filtros opcionales
-        
-        Args:
-            username: Nombre de usuario (opcional)
-            folder_name: Nombre de carpeta (opcional)
-            load_id: Load ID para filtrar (opcional)
-            remesa: Remesa para filtrar (opcional)
-        
-        Returns:
-            Lista de manifiestos
-        """
+
+    def get_manifiestos(self, username: str = '', folder_name: str = '',
+                       load_id: Optional[str] = None, remesa: Optional[str] = None,
+                       limit: Optional[int] = None) -> List[Dict]:
+        """Obtiene manifiestos con filtros opcionales y `limit` configurable."""
         try:
             filters = []
-            
             if username:
                 filters.append(('username', '==', username))
             if folder_name:
@@ -193,12 +177,14 @@ class ManifiestosRepository(FirebaseRepository):
                 filters.append(('load_id', '==', load_id))
             if remesa:
                 filters.append(('remesa', '==', remesa))
-            
-            # Solo obtener manifiestos activos
+
             filters.append(('active', '==', True))
-            
-            results = self.get_all(filters=filters if filters else None, order_by='fecha_procesamiento')
-            return results
+
+            return self.get_all(
+                filters=filters if filters else None,
+                order_by='fecha_procesamiento',
+                limit=limit,
+            )
         except Exception as e:
             print(f"Error al obtener manifiestos: {e}")
             return []

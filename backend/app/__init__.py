@@ -34,7 +34,14 @@ def create_app(config_class=Config):
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With"],
          supports_credentials=True)
-    
+
+    # Rate limiting (login/register, etc.)
+    try:
+        from app.modules.rate_limit import init_rate_limiter
+        init_rate_limiter(app)
+    except Exception as e:
+        print(f"[WARN] Rate limiter no inicializado: {e}")
+
     # Registrar blueprints
     from app.api.auth import bp as auth_bp
     from app.api.usuarios import bp as usuarios_bp
@@ -57,6 +64,7 @@ def create_app(config_class=Config):
     from app.api.expense_sheets import bp as expense_sheets_bp
     from app.api.trailers import bp as trailers_bp
     from app.api.providers import bp as providers_bp
+    from app.api.productivity import bp as productivity_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(usuarios_bp, url_prefix='/api/usuarios')
@@ -79,6 +87,7 @@ def create_app(config_class=Config):
     app.register_blueprint(expense_sheets_bp, url_prefix='/api/expense-sheets')
     app.register_blueprint(trailers_bp, url_prefix='/api')
     app.register_blueprint(providers_bp, url_prefix='/api')
+    app.register_blueprint(productivity_bp, url_prefix='/api/productividad')
 
     # Seed de roles predeterminados
     with app.app_context():

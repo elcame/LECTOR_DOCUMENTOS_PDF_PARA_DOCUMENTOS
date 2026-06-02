@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 from flask import Blueprint, request, jsonify
 from functools import wraps
-import hashlib
 
 ROOT_DIR = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(ROOT_DIR))
@@ -21,6 +20,8 @@ try:
 except ImportError as e:
     print(f"Advertencia: Error al importar módulos en usuarios_firebase.py: {e}")
 
+from app.modules.password_security import hash_password
+
 bp = Blueprint('usuarios_firebase', __name__)
 
 
@@ -31,10 +32,6 @@ def login_required_api(f):
             return jsonify({'success': False, 'error': 'No autenticado'}), 401
         return f(*args, **kwargs)
     return decorated
-
-
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
 
 
 def _strip_sensitive(usuario: dict) -> dict:

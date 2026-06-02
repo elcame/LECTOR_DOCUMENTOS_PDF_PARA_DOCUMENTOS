@@ -318,7 +318,7 @@ def process_folder():
 @bp.route('/download_excel', methods=['GET'])
 @login_required_api
 def download_excel():
-    """API para descargar Excel desde Firebase Storage"""
+    """API para descargar Excel. Regenera desde Firestore para incluir TODO lo de la carpeta."""
     try:
         from flask import send_file
         from io import BytesIO
@@ -330,32 +330,63 @@ def download_excel():
         folder_name = request.args.get('folder_name')
         if not folder_name:
             return jsonify({'success': False, 'error': 'folder_name requerido'}), 400
-        
+
+        # Para conductor: exportar desde el owner real (parent_username)
+        owner_username = username
         try:
-            from app.config.firebase_config import FirebaseConfig
-            
-            bucket = FirebaseConfig.get_storage_bucket()
-            excel_filename = f'manifiestos_{folder_name}.xlsx'
-            excel_storage_path = f"excels/{username}/{folder_name}/{excel_filename}"
-            
-            blob = bucket.blob(excel_storage_path)
-            
-            if not blob.exists():
-                return jsonify({
-                    'success': False,
-                    'error': 'Excel no encontrado. Procesa la carpeta primero.'
-                }), 404
-            
-            excel_bytes = blob.download_as_bytes()
-            
-            return send_file(
-                BytesIO(excel_bytes),
-                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                as_attachment=True,
-                download_name=excel_filename
-            )
+            from app.api.manifiestos_data import _get_owner_username_for_manifiestos
+            owner_username = _get_owner_username_for_manifiestos(username)
+        except Exception:
+            owner_username = username
+
+        # 1) Leer manifiestos desde Firestore (fuente de verdad, igual que la tabla)
+        try:
+            from app.database.manifiestos_repository import ManifiestosRepository
+            repo = ManifiestosRepository()
+            filters = [('username', '==', owner_username), ('active', '==', True), ('folder_name', '==', folder_name)]
+            # Exporta hasta 10k por carpeta (si necesitas más, se puede paginar).
+            manifiestos = repo.get_all(filters=filters, limit=10000)
         except ImportError:
             return jsonify({'success': False, 'error': 'Firebase no disponible'}), 503
+
+        if not manifiestos:
+            return jsonify({
+                'success': False,
+                'error': 'No hay manifiestos para exportar en esa carpeta.'
+            }), 404
+
+        # 2) Generar Excel en memoria con normalización de campos
+        from modules.excel_generator import crear_excel_en_memoria
+        excel_buffer, excel_filename = crear_excel_en_memoria(manifiestos, folder_name)
+        if not excel_buffer or not excel_filename:
+            return jsonify({'success': False, 'error': 'No se pudo generar el Excel'}), 500
+
+        # 3) (Opcional) Subir a Storage como caché para descargas futuras
+        try:
+            from app.config.firebase_config import FirebaseConfig
+            bucket = FirebaseConfig.get_storage_bucket()
+            excel_storage_path = f"excels/{owner_username}/{folder_name}/{excel_filename}"
+            blob = bucket.blob(excel_storage_path)
+            excel_buffer.seek(0)
+            blob.upload_from_file(
+                excel_buffer,
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            try:
+                blob.make_public()
+            except Exception:
+                pass
+        except Exception as e:
+            print(f"[WARN] No se pudo cachear el Excel en Storage: {e}")
+
+        # 4) Responder archivo
+        excel_buffer.seek(0)
+        return send_file(
+            excel_buffer,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=excel_filename
+        )
     except Exception as e:
         print(f"Error al descargar Excel: {e}")
         import traceback

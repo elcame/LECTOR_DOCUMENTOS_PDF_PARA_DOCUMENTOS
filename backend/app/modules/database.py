@@ -268,6 +268,24 @@ def update_user_last_login(username: str) -> bool:
         return False
 
 
+def update_user_password_hash(username: str, password_hash: str) -> bool:
+    """
+    Actualiza el hash de contraseña del usuario (usado para migración a bcrypt).
+    """
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE users
+                SET password_hash = ?
+                WHERE LOWER(username) = LOWER(?)
+            ''', (password_hash, username))
+            return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Error al actualizar password hash: {e}")
+        return False
+
+
 def get_all_users() -> List[Dict]:
     """
     Obtiene todos los usuarios
