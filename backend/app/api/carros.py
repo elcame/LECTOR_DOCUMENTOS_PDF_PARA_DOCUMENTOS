@@ -1,6 +1,7 @@
 """
 API de carros y propietarios
 """
+import re
 import sys
 from pathlib import Path
 from flask import Blueprint, request, jsonify
@@ -184,6 +185,26 @@ def create_carro():
     return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@bp.route('/carros/<car_id>', methods=['GET'])
+@login_required_api
+def get_carro(car_id):
+  """Obtiene un carro del usuario autenticado."""
+  try:
+    username = get_current_user()
+    include_owner = request.args.get('include_owner', 'false').lower() == 'true'
+    carros_repo = CarrosRepository()
+    existing = carros_repo.get_by_id(car_id)
+    if not existing or existing.get('username') != username:
+      return jsonify({'success': False, 'error': 'Carro no encontrado'}), 404
+    if include_owner and existing.get('ownerId'):
+      existing['owner'] = PropietariosRepository().get_by_id(existing.get('ownerId'))
+    else:
+      existing['owner'] = existing.get('owner')
+    return jsonify({'success': True, 'data': existing})
+  except Exception as e:
+    return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @bp.route('/carros/<car_id>', methods=['PUT'])
 @login_required_api
 def update_carro(car_id):
@@ -215,6 +236,12 @@ def update_carro(car_id):
     for field in ['soat_vencimiento', 'tecnomecanica_vencimiento', 'modelo', 'ownerId', 'activo']:
       if field in data:
         update_data[field] = data.get(field)
+
+    if 'paint_color' in data:
+      paint_color = str(data.get('paint_color') or '').strip()
+      if not re.fullmatch(r'#[0-9A-Fa-f]{6}', paint_color):
+        return jsonify({'success': False, 'error': 'El color debe ser un hex #RRGGBB'}), 400
+      update_data['paint_color'] = paint_color.lower()
 
     if not update_data:
       return jsonify({'success': False, 'error': 'No hay cambios para aplicar'}), 400

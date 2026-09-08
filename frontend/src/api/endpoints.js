@@ -14,7 +14,9 @@ export const ENDPOINTS = {
   MANIFIESTOS: {
     FOLDERS: '/manifiestos/folders',
     OVERVIEW: '/manifiestos/overview',
-    FOLDER_DELETE: (folderName) => `/manifiestos/folders/${folderName}`,
+    FOLDER_DELETE: (folderName) => `/manifiestos/folders/${encodeURIComponent(folderName)}`,
+    FOLDERS_PURGE_ALL: '/manifiestos/folders/purge-all',
+    DUPLICATES_RESOLVE: '/manifiestos/duplicates/resolve',
     UPLOAD_FOLDER: '/manifiestos/upload_folder',
     UPLOAD_FILE: '/manifiestos/upload_file',
     PROCESS_FOLDER: '/manifiestos/process_folder',
@@ -36,6 +38,11 @@ export const ENDPOINTS = {
     UPDATE_QR_FIELD: '/manifiestos/update_qr_field',
     PROCESS_FOLDER_QR: '/manifiestos/process_folder_qr',
     MANIFIESTOS_DATA: '/manifiestos/manifiestos_data',
+    FOLDER_TIPO: '/manifiestos/folder_tipo',
+  },
+  TIPOS_MANIFIESTO: {
+    BASE: '/tipos-manifiesto',
+    BY_ID: (id) => `/tipos-manifiesto/${id}`,
   },
   
   // Operaciones
@@ -123,6 +130,8 @@ export const ENDPOINTS = {
   CARROS: {
     BASE: '/carros',
     BY_ID: (id) => `/carros/${id}`,
+    PIEZAS: (id) => `/carros/${id}/piezas`,
+    PIEZAS_CAMBIO: (id) => `/carros/${id}/piezas/cambio`,
   },
   PROPIETARIOS: {
     BASE: '/propietarios',

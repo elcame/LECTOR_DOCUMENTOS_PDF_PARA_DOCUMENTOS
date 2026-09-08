@@ -9,8 +9,15 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Manifiestos from './pages/Manifiestos'
-import Operaciones from './pages/Operaciones'
+import OperacionesRedirect from './pages/administrador-operacion/OperacionesRedirect'
+import HubPage from './pages/administrador-operacion/HubPage'
+import CargarYProcesarPage from './pages/administrador-operacion/CargarYProcesarPage'
+import CarpetasProcesadasPage from './pages/administrador-operacion/CarpetasProcesadasPage'
+import ConsultarPage from './pages/administrador-operacion/ConsultarPage'
+import EstadisticasPage from './pages/administrador-operacion/EstadisticasPage'
+import TiposManifiestoPage from './pages/administrador-operacion/TiposManifiestoPage'
 import Carros from './pages/Carros'
+import CarroEstadoPage from './pages/carros/CarroEstadoPage'
 import Administrador from './pages/Administrador'
 import GPSTracking from './pages/GPSTracking'
 import Proveedores from './pages/Proveedores'
@@ -43,11 +50,39 @@ function App() {
             />
             <Route
               path={ROUTES.OPERACIONES}
-              element={<ProtectedRoute requireAdmin><AppShell><Operaciones /></AppShell></ProtectedRoute>}
+              element={<ProtectedRoute requireAdmin><OperacionesRedirect /></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.ADMIN_OPERACION}
+              element={<ProtectedRoute requireAdmin><AppShell><HubPage /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.ADMIN_OPERACION_CARGAR}
+              element={<ProtectedRoute requireAdmin><AppShell><CargarYProcesarPage /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.ADMIN_OPERACION_CARPETAS}
+              element={<ProtectedRoute requireAdmin><AppShell><CarpetasProcesadasPage /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.ADMIN_OPERACION_CONSULTAR}
+              element={<ProtectedRoute requireAdmin><AppShell><ConsultarPage /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.ADMIN_OPERACION_ESTADISTICAS}
+              element={<ProtectedRoute requireAdmin><AppShell><EstadisticasPage /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path={ROUTES.ADMIN_OPERACION_TIPOS}
+              element={<ProtectedRoute requireAdmin><AppShell><TiposManifiestoPage /></AppShell></ProtectedRoute>}
             />
             <Route
               path={ROUTES.CARROS}
               element={<ProtectedRoute requireAdmin><AppShell><Carros /></AppShell></ProtectedRoute>}
+            />
+            <Route
+              path="/carros/:id/estado"
+              element={<ProtectedRoute requireAdmin><AppShell><CarroEstadoPage /></AppShell></ProtectedRoute>}
             />
             <Route
               path={ROUTES.PROVEEDORES}

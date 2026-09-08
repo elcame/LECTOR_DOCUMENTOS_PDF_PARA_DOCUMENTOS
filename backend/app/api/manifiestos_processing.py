@@ -20,6 +20,7 @@ def process_folder():
         
         data = request.get_json()
         folder_name = data.get('folder_name')
+        tipo_id_body = (data.get('tipo_id') or '').strip()
         
         if not folder_name:
             return jsonify({
@@ -182,6 +183,25 @@ def process_folder():
         
         archivos_pdf = [p.get('filename') for p in pdf_records if (p.get('filename') or '').lower().endswith('.pdf')]
         
+        tipo_id = ''
+        tipo_nombre = ''
+        try:
+            from app.database.carpetas_meta_repository import CarpetasMetaRepository
+            from app.database.tipos_manifiesto_repository import TiposManifiestoRepository
+            if tipo_id_body:
+                tipo = TiposManifiestoRepository().get_by_id(tipo_id_body)
+                if tipo and tipo.get('username') == username.lower():
+                    tipo_id = tipo.get('id') or tipo_id_body
+                    tipo_nombre = tipo.get('nombre') or ''
+                    CarpetasMetaRepository().upsert_tipo(username, folder_name, tipo_id, tipo_nombre)
+            else:
+                meta = CarpetasMetaRepository().get_for_folder(username, folder_name)
+                if meta:
+                    tipo_id = meta.get('tipo_id') or ''
+                    tipo_nombre = meta.get('tipo_nombre') or ''
+        except Exception as e:
+            print(f"[WARN] No se pudo resolver tipo de manifiesto: {e}")
+
         indices_guardados = []
         
         for i, manifiesto in enumerate(manifiestos):
@@ -199,7 +219,9 @@ def process_folder():
                 folder_name=folder_name,
                 archivo=archivo,
                 manifiesto_data=manifiesto,
-                factura_data=factura_data
+                factura_data=factura_data,
+                tipo_id=tipo_id,
+                tipo_nombre=tipo_nombre,
             )
             
             if success:
@@ -209,7 +231,9 @@ def process_folder():
                         'load_id': manifiesto.get('load_id', 'No encontrado'),
                         'remesa': manifiesto.get('remesa', 'No encontrada'),
                         'message': message,
-                        'existing_id': existing.get('id')
+                        'existing_id': existing.get('id') if existing else None,
+                        'archivo_original': (existing or {}).get('archivo') or (existing or {}).get('filename'),
+                        'folder_original': (existing or {}).get('folder_name'),
                     })
                     print(f"[DUPLICADO] {archivo}: {message}")
                 else:
@@ -226,7 +250,10 @@ def process_folder():
                         'archivo': archivo,
                         'load_id': manifiesto.get('load_id', 'No encontrado'),
                         'remesa': manifiesto.get('remesa', 'No encontrada'),
-                        'message': message
+                        'message': message,
+                        'existing_id': (existing or {}).get('id'),
+                        'archivo_original': (existing or {}).get('archivo') or (existing or {}).get('filename'),
+                        'folder_original': (existing or {}).get('folder_name'),
                     })
                 else:
                     manifiestos_errores.append({
@@ -306,9 +333,9 @@ def process_folder():
             }
         })
     except Exception as e:
-        print(f"[ERROR] Error en process_folder: {e}")
         import traceback
-        print(traceback.format_exc())
+        tb = traceback.format_exc().encode('ascii', 'replace').decode('ascii')
+        print(tb)
         return jsonify({
             'success': False,
             'error': str(e)
@@ -418,7 +445,18 @@ def update_manifiesto_field():
             from app.database.manifiestos_repository import ManifiestosRepository
             repo = ManifiestosRepository()
             
-            success = repo.update(manifest_id, {field: value})
+            if field == 'tipo_id':
+                tipo_id = (value or '').strip()
+                tipo_nombre = ''
+                if tipo_id:
+                    from app.database.tipos_manifiesto_repository import TiposManifiestoRepository
+                    tipo = TiposManifiestoRepository().get_by_id(tipo_id)
+                    if not tipo or tipo.get('username') != username.lower():
+                        return jsonify({'success': False, 'error': 'Tipo no válido'}), 400
+                    tipo_nombre = tipo.get('nombre') or ''
+                success = repo.update(manifest_id, {'tipo_id': tipo_id, 'tipo_nombre': tipo_nombre})
+            else:
+                success = repo.update(manifest_id, {field: value})
             
             if success:
                 return jsonify({

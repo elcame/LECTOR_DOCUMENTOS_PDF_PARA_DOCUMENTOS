@@ -73,35 +73,41 @@ class ManifiestosRepository(FirebaseRepository):
             return None
     
     def save_manifiesto(self, username: str, folder_name: str, archivo: str, 
-                       manifiesto_data: Dict, factura_data: Dict = None) -> Tuple[bool, str, Optional[Dict]]:
+                       manifiesto_data: Dict, factura_data: Dict = None,
+                       tipo_id: str = '', tipo_nombre: str = '',
+                       force_mode: str = '') -> Tuple[bool, str, Optional[Dict]]:
         """
-        Guarda un manifiesto en Firebase con validación de duplicados
-        
-        Args:
-            username: Nombre de usuario
-            folder_name: Nombre de la carpeta
-            archivo: Nombre del archivo PDF
-            manifiesto_data: Datos del manifiesto
-            factura_data: Datos de factura electrónica (opcional)
-        
-        Returns:
-            tuple: (success, message, existing_manifiesto)
-                - success: True si se guardó, False si es duplicado o error
-                - message: Mensaje descriptivo
-                - existing_manifiesto: Manifiesto existente si es duplicado
+        Guarda un manifiesto en Firebase con validación de duplicados.
+
+        force_mode:
+          '' | None — comportamiento normal (rechaza duplicados)
+          'replace' — desactiva el existente y guarda este como canónico
+          'keep_both' — guarda con ID único por archivo (ambos activos)
         """
         try:
             load_id = manifiesto_data.get('load_id', 'No encontrado')
             remesa = manifiesto_data.get('remesa', 'No encontrada')
+            force_mode = (force_mode or '').strip().lower()
             
             # Verificar duplicados (incluyendo username para mayor seguridad)
             existing = self.check_duplicate(load_id, remesa, username)
-            if existing:
+            if existing and force_mode not in ('replace', 'keep_both'):
                 identificador = f"load_id: {load_id}" if load_id != 'No encontrado' else f"remesa: {remesa}"
                 return (False, f"Manifiesto duplicado detectado ({identificador})", existing)
+
+            if existing and force_mode == 'replace':
+                try:
+                    self.update(existing['id'], {'active': False})
+                except Exception as e:
+                    print(f"[WARN] No se pudo desactivar manifiesto existente {existing.get('id')}: {e}")
             
             # Generar ID único
-            doc_id = self.generate_unique_id(load_id, remesa, username, archivo)
+            if force_mode == 'keep_both':
+                safe_archivo = str(archivo or 'archivo').replace('/', '_').replace('\\', '_').replace('.', '_')
+                base = self.generate_unique_id(load_id, remesa, username, archivo)
+                doc_id = f"{base}__{safe_archivo}"
+            else:
+                doc_id = self.generate_unique_id(load_id, remesa, username, archivo)
             
             # Preparar datos para guardar
             data = {
@@ -133,6 +139,8 @@ class ManifiestosRepository(FirebaseRepository):
                 'saldo': manifiesto_data.get('saldo', ''),
                 'fecha_liquidacion': manifiesto_data.get('fecha_liquidacion', ''),
                 'fecha_pago': manifiesto_data.get('fecha_pago', ''),
+                'tipo_id': tipo_id or manifiesto_data.get('tipo_id', ''),
+                'tipo_nombre': tipo_nombre or manifiesto_data.get('tipo_nombre', ''),
                 'active': True  # Soft delete flag
             }
             
@@ -243,17 +251,23 @@ class ManifiestosRepository(FirebaseRepository):
             tuple: (deleted_count, errors_list)
         """
         try:
-            filters = [('username', '==', username), ('active', '==', True)]
-            manifiestos = self.get_all(filters=filters)
+            filters = [
+                ('username', '==', username.lower()),
+                ('active', '==', True),
+            ]
+            manifiestos = self.get_all(filters=filters, allow_unbounded=True)
             
             deleted_count = 0
             errors = []
             
             for m in manifiestos:
                 # Verificar si pertenece a la carpeta
-                if (m.get('carpeta') == folder_name or 
-                    folder_name in str(m.get('filename', '')) or
-                    folder_name in str(m.get('archivo', ''))):
+                if (
+                    m.get('carpeta') == folder_name
+                    or m.get('folder_name') == folder_name
+                    or folder_name in str(m.get('filename', ''))
+                    or folder_name in str(m.get('archivo', ''))
+                ):
                     
                     doc_id = m.get('id')
                     if doc_id:

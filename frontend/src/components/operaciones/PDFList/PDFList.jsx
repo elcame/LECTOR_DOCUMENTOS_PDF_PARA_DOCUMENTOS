@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import PDFItem from '../PDFItem/PDFItem'
 import PDFMerger from '../PDFMerger/PDFMerger'
 import PDFPages from '../PDFPages/PDFPages'
+import RenamePdfDialog from './RenamePdfDialog'
 import { manifiestosService } from '../../../services/manifiestosService'
 
 export default function PDFList({ pdfs = [], folderName = null, loading = false, onRefresh }) {
@@ -11,6 +12,7 @@ export default function PDFList({ pdfs = [], folderName = null, loading = false,
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedFolder, setSelectedFolder] = useState('')
   const [availableFolders, setAvailableFolders] = useState([])
+  const [pdfToRename, setPdfToRename] = useState(null)
 
   // Extraer carpetas únicas
   useEffect(() => {
@@ -231,12 +233,22 @@ export default function PDFList({ pdfs = [], folderName = null, loading = false,
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button
-                      onClick={() => handleOpenPdfInNewTab(pdf)}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      Abrir PDF
-                    </button>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPdfInNewTab(pdf)}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Abrir PDF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPdfToRename(pdf)}
+                        className="text-slate-700 hover:text-slate-900 font-medium"
+                      >
+                        Renombrar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -251,6 +263,13 @@ export default function PDFList({ pdfs = [], folderName = null, loading = false,
         isOpen={selectedPdf !== null && !showMerger}
         onClose={() => setSelectedPdf(null)}
         onPdfUpdated={onRefresh}
+      />
+      <RenamePdfDialog
+        pdf={pdfToRename}
+        folderName={folderName}
+        isOpen={Boolean(pdfToRename)}
+        onClose={() => setPdfToRename(null)}
+        onSuccess={onRefresh}
       />
     </div>
   )

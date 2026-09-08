@@ -1,60 +1,52 @@
 import { useState, useEffect } from 'react'
 import { manifiestosService } from '../../../services/manifiestosService'
+import { DuplicatePairsView } from '../../administrador-operacion/duplicados'
+
+function hasEmptyFields(manifiesto) {
+  const fieldsToCheck = ['fecha inicio', 'anticipo', 'load_id', 'remesa', 'placa', 'conductor']
+  return fieldsToCheck.some((field) => {
+    const value = manifiesto[field]
+    return !value || value === 'No encontrado' || value === 'No encontrada' || value === '' || value === 'NO_ENCONTRADO'
+  })
+}
 
 /**
  * Componente para mostrar los resultados del procesamiento de una carpeta
  * Muestra tablas con manifiestos guardados, duplicados y errores
  */
 export default function ProcessingResults({ data, folderName, onClose }) {
-  const [activeTab, setActiveTab] = useState('summary') // summary, saved, duplicates, errors
+  const [activeTab, setActiveTab] = useState('summary')
   const [manifiestos, setManifiestos] = useState([])
+  const [editingCell, setEditingCell] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [saving, setSaving] = useState(false)
+  const rawManifiestos = data?.manifiestos
+
+  useEffect(() => {
+    const list = rawManifiestos || []
+    if (list.length === 0) {
+      setManifiestos([])
+      return
+    }
+    const sorted = [...list].sort((a, b) => {
+      const aEmpty = hasEmptyFields(a)
+      const bEmpty = hasEmptyFields(b)
+      if (aEmpty && !bEmpty) return -1
+      if (!aEmpty && bEmpty) return 1
+      return 0
+    })
+    setManifiestos(sorted)
+  }, [rawManifiestos])
 
   if (!data) return null
-
-  // 🔥 DEPURACIÓN: Mostrar qué datos están llegando
-  console.log('🔍 ProcessingResults - Datos recibidos:', {
-    total_manifiestos: data.total_manifiestos,
-    total_procesados: data.total_procesados,
-    manifiestos_count: data.manifiestos?.length || 0,
-    manifiestos_guardados_count: data.manifiestos_guardados?.length || 0,
-    primeros_manifiestos: data.manifiestos?.slice(0, 2)
-  })
 
   const {
     total_manifiestos = 0,
     total_procesados = 0,
     total_duplicados = 0,
     total_errores = 0,
-    manifiestos_guardados = [],
-    manifiestos_duplicados_firebase = [],
-    archivos_duplicados = [],
     manifiestos_errores = [],
-    manifiestos: rawManifiestos = []
   } = data
-
-  // Cargar y ordenar manifiestos
-  useEffect(() => {
-    if (rawManifiestos && rawManifiestos.length > 0) {
-      // Ordenar: manifiestos con campos vacíos primero
-      const sorted = [...rawManifiestos].sort((a, b) => {
-        const aEmpty = hasEmptyFields(a)
-        const bEmpty = hasEmptyFields(b)
-        if (aEmpty && !bEmpty) return -1
-        if (!aEmpty && bEmpty) return 1
-        return 0
-      })
-      setManifiestos(sorted)
-    }
-  }, [rawManifiestos])
-
-  // Verificar si un manifiesto tiene campos vacíos
-  const hasEmptyFields = (manifiesto) => {
-    const fieldsToCheck = ['fecha inicio', 'anticipo', 'load_id', 'remesa', 'placa', 'conductor']
-    return fieldsToCheck.some(field => {
-      const value = manifiesto[field]
-      return !value || value === 'No encontrado' || value === 'No encontrada' || value === '' || value === 'NO_ENCONTRADO'
-    })
-  }
 
   // Manejar inicio de edición
   const handleStartEdit = (manifestoIndex, field, currentValue) => {
@@ -85,7 +77,7 @@ export default function ProcessingResults({ data, folderName, onClose }) {
         } else {
           // Fallback: usar username_archivo
           const username = 'current_user' // Se obtiene del contexto
-          const safeArchivo = archivo.replace(/[/\\\.]/g, '_')
+          const safeArchivo = String(archivo || 'archivo').replace(/[/\\.]/g, '_')
           manifestId = `${username}_${safeArchivo}`
         }
       }
@@ -102,7 +94,7 @@ export default function ProcessingResults({ data, folderName, onClose }) {
       setEditValue('')
     } catch (error) {
       console.error('Error al actualizar campo:', error)
-      alert('Error al guardar el cambio: ' + (error.response?.data?.error || error.message))
+      alert('Error al guardar el cambio: ' + (error?.message || 'No se pudo guardar'))
     } finally {
       setSaving(false)
     }
@@ -428,128 +420,8 @@ export default function ProcessingResults({ data, folderName, onClose }) {
           </div>
         )}
 
-        {/* Tab: Duplicados */}
         {activeTab === 'duplicates' && (
-          <div>
-            {(manifiestos_duplicados_firebase.length > 0 || archivos_duplicados.length > 0) ? (
-              <div className="space-y-6">
-                {/* Duplicados detectados en Firebase */}
-                {manifiestos_duplicados_firebase.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                      <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                      Duplicados detectados en Firebase ({manifiestos_duplicados_firebase.length})
-                    </h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-yellow-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase tracking-wider">
-                              Archivo
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase tracking-wider">
-                              Load ID
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase tracking-wider">
-                              Remesa
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-yellow-700 uppercase tracking-wider">
-                              Razón
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {manifiestos_duplicados_firebase.map((item, index) => (
-                            <tr key={index} className="hover:bg-yellow-50">
-                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {item.archivo}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                {item.load_id !== 'No encontrado' ? (
-                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
-                                    {item.load_id}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                {item.remesa !== 'No encontrada' ? (
-                                  <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
-                                    {item.remesa}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-yellow-700">
-                                {item.message || 'Duplicado detectado'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* Duplicados del procesamiento inicial */}
-                {archivos_duplicados.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                      <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Duplicados del procesamiento inicial ({archivos_duplicados.length})
-                    </h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-orange-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">
-                              Archivo
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">
-                              Identificador
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-orange-700 uppercase tracking-wider">
-                              Archivo Original
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {archivos_duplicados.map((item, index) => (
-                            <tr key={index} className="hover:bg-orange-50">
-                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {item.archivo}
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs font-medium">
-                                  {item.identificador}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                                {item.archivo_original}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="mt-4 text-sm text-gray-500">No se detectaron duplicados</p>
-              </div>
-            )}
-          </div>
+          <DuplicatePairsView data={data} folderName={folderName} />
         )}
 
         {/* Tab: Errores */}

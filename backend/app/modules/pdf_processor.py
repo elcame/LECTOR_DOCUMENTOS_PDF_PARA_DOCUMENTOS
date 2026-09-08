@@ -144,7 +144,7 @@ def procesar_carpeta_qr(carpeta: str):
                 print(f"[WARN] No se encontro QR en: {archivo}")
                 
         except Exception as e:
-            print(f"❌ Error al extraer QR de {archivo}: {e}")
+            print(f"[ERROR] Error al extraer QR de {archivo}: {e}")
             continue
     
     return resultados_qr

@@ -59,36 +59,35 @@ const Modal = ({
     >
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+        className="fixed inset-0 bg-slate-900/40"
         onClick={closeOnOverlayClick ? onClose : undefined}
       ></div>
 
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className={`relative bg-white rounded-lg shadow-xl ${sizes[size]} w-full`}
+          className={`relative bg-white rounded-2xl border border-slate-200 shadow-sm ${sizes[size]} w-full`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
           {title && (
-            <div className="card-header flex items-center justify-between">
-              <h3 className="card-title" id="modal-title">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-900" id="modal-title">
                 {title}
               </h3>
               <button
+                type="button"
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg p-1"
+                className="rounded-lg p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100"
                 aria-label="Cerrar"
               >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
           )}
 
-          {/* Body */}
-          <div className="card-body">{children}</div>
+          <div className="text-slate-700">{children}</div>
 
           {/* Footer */}
           {footer && (

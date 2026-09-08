@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import carrosService from '../../../services/carrosService'
 import manifiestosService from '../../../services/manifiestosService'
 import Loading from '../../common/Loading/Loading'
+import { garageTableTone } from '../../carros/flota/garageTableTone'
 
-export default function CarrosTable() {
+export default function CarrosTable({ tone = 'light' }) {
+  const ui = garageTableTone(tone === 'dark')
   const [carros, setCarros] = useState([])
   const [propietarios, setPropietarios] = useState([])
   const [loading, setLoading] = useState(true)
@@ -198,17 +200,17 @@ export default function CarrosTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">Carros</h2>
-          <p className="text-xs text-slate-500">
+          <h2 className={ui.title}>Carros</h2>
+          <p className={ui.subtitle}>
             Gestiona vehículos, vencimientos de SOAT / tecnomecánica y propietarios.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700"
+            className={ui.btnSecondary}
             onClick={loadPlacasFromManifestos}
             disabled={importLoading}
           >
@@ -216,7 +218,7 @@ export default function CarrosTable() {
           </button>
           <button
             type="button"
-            className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
+            className={ui.btnPrimary}
             onClick={() => {
               setEditingId('new')
               setDraft({
@@ -235,111 +237,51 @@ export default function CarrosTable() {
       </div>
 
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-xs">
+        <div className={ui.error}>
           {error}
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="min-w-[900px] w-full text-sm divide-y divide-slate-200">
-          <thead className="bg-slate-50 sticky top-0 z-10">
+      <div className={ui.tableWrap}>
+        <table className={ui.table}>
+          <thead className={ui.thead}>
             <tr>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Placa
-              </th>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                SOAT
-              </th>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Tecnomecánica
-              </th>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Modelo
-              </th>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Propietario
-              </th>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Estado
-              </th>
-              <th className="px-3 py-2 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Acciones
-              </th>
+              <th className={ui.th}>Placa</th>
+              <th className={ui.th}>SOAT</th>
+              <th className={ui.th}>Tecnomecánica</th>
+              <th className={ui.th}>Modelo</th>
+              <th className={ui.th}>Propietario</th>
+              <th className={ui.th}>Estado</th>
+              <th className={ui.thCenter}>Acciones</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody className={ui.tbody}>
             {editingId === 'new' && (
-              <tr className="bg-blue-50/40">
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <input
-                    type="text"
-                    className="input input-sm w-full"
-                    value={draft.placa || ''}
-                    onChange={(e) => handleChange('placa', e.target.value)}
-                    placeholder="ABC123"
-                  />
+              <tr className={ui.rowNew}>
+                <td className={ui.cellPad}>
+                  <input type="text" className={ui.input} value={draft.placa || ''} onChange={(e) => handleChange('placa', e.target.value)} placeholder="ABC123" />
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <input
-                    type="date"
-                    className="input input-sm w-full"
-                    value={draft.soat_vencimiento || ''}
-                    onChange={(e) => handleChange('soat_vencimiento', e.target.value)}
-                  />
+                <td className={ui.cellPad}>
+                  <input type="date" className={ui.input} value={draft.soat_vencimiento || ''} onChange={(e) => handleChange('soat_vencimiento', e.target.value)} />
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <input
-                    type="date"
-                    className="input input-sm w-full"
-                    value={draft.tecnomecanica_vencimiento || ''}
-                    onChange={(e) =>
-                      handleChange('tecnomecanica_vencimiento', e.target.value)
-                    }
-                  />
+                <td className={ui.cellPad}>
+                  <input type="date" className={ui.input} value={draft.tecnomecanica_vencimiento || ''} onChange={(e) => handleChange('tecnomecanica_vencimiento', e.target.value)} />
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <input
-                    type="text"
-                    className="input input-sm w-full"
-                    value={draft.modelo || ''}
-                    onChange={(e) => handleChange('modelo', e.target.value)}
-                    placeholder="Modelo"
-                  />
+                <td className={ui.cellPad}>
+                  <input type="text" className={ui.input} value={draft.modelo || ''} onChange={(e) => handleChange('modelo', e.target.value)} placeholder="Modelo" />
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap">
-                  <select
-                    className="input input-sm w-full"
-                    value={draft.ownerId || ''}
-                    onChange={(e) => handleChange('ownerId', e.target.value)}
-                  >
+                <td className={ui.cellPad}>
+                  <select className={ui.input} value={draft.ownerId || ''} onChange={(e) => handleChange('ownerId', e.target.value)}>
                     <option value="">Sin propietario</option>
                     {propietarios.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.nombre}
-                      </option>
+                      <option key={o.id} value={o.id}>{o.nombre}</option>
                     ))}
                   </select>
                 </td>
-                <td className="px-3 py-2 whitespace-nowrap text-xs text-emerald-700">
-                  Activo
-                </td>
-                <td className="px-3 py-2 whitespace-nowrap text-center text-xs">
-                  <button
-                    type="button"
-                    className="text-emerald-600 hover:text-emerald-800 mr-2"
-                    disabled={saving}
-                    onClick={createCar}
-                  >
-                    Guardar
-                  </button>
-                  <button
-                    type="button"
-                    className="text-slate-500 hover:text-slate-700"
-                    disabled={saving}
-                    onClick={cancelEdit}
-                  >
-                    Cancelar
-                  </button>
+                <td className={`${ui.cellPad} text-xs text-emerald-400`}>Activo</td>
+                <td className={`${ui.cellPad} text-center text-xs`}>
+                  <button type="button" className={ui.linkSave} disabled={saving} onClick={createCar}>Guardar</button>
+                  <button type="button" className={ui.linkCancel} disabled={saving} onClick={cancelEdit}>Cancelar</button>
                 </td>
               </tr>
             )}
@@ -351,163 +293,63 @@ export default function CarrosTable() {
 
               if (isEditing) {
                 return (
-                  <tr
-                    key={car.id}
-                    className={`${isOdd ? 'bg-slate-50/40' : 'bg-white'} border-l-2 border-blue-500`}
-                  >
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input
-                        type="text"
-                        className="input input-sm w-full"
-                        value={draft.placa || ''}
-                        onChange={(e) => handleChange('placa', e.target.value)}
-                      />
+                  <tr key={car.id} className={ui.rowEdit(isOdd)}>
+                    <td className={ui.cellPad}>
+                      <input type="text" className={ui.input} value={draft.placa || ''} onChange={(e) => handleChange('placa', e.target.value)} />
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input
-                        type="date"
-                        className="input input-sm w-full"
-                        value={draft.soat_vencimiento || ''}
-                        onChange={(e) =>
-                          handleChange('soat_vencimiento', e.target.value)
-                        }
-                      />
+                    <td className={ui.cellPad}>
+                      <input type="date" className={ui.input} value={draft.soat_vencimiento || ''} onChange={(e) => handleChange('soat_vencimiento', e.target.value)} />
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input
-                        type="date"
-                        className="input input-sm w-full"
-                        value={draft.tecnomecanica_vencimiento || ''}
-                        onChange={(e) =>
-                          handleChange('tecnomecanica_vencimiento', e.target.value)
-                        }
-                      />
+                    <td className={ui.cellPad}>
+                      <input type="date" className={ui.input} value={draft.tecnomecanica_vencimiento || ''} onChange={(e) => handleChange('tecnomecanica_vencimiento', e.target.value)} />
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <input
-                        type="text"
-                        className="input input-sm w-full"
-                        value={draft.modelo || ''}
-                        onChange={(e) => handleChange('modelo', e.target.value)}
-                      />
+                    <td className={ui.cellPad}>
+                      <input type="text" className={ui.input} value={draft.modelo || ''} onChange={(e) => handleChange('modelo', e.target.value)} />
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <select
-                        className="input input-sm w-full"
-                        value={draft.ownerId || ''}
-                        onChange={(e) => handleChange('ownerId', e.target.value)}
-                      >
+                    <td className={ui.cellPad}>
+                      <select className={ui.input} value={draft.ownerId || ''} onChange={(e) => handleChange('ownerId', e.target.value)}>
                         <option value="">Sin propietario</option>
                         {propietarios.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.nombre}
-                          </option>
+                          <option key={o.id} value={o.id}>{o.nombre}</option>
                         ))}
                       </select>
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 ${
-                          draft.activo !== false
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-slate-50 text-slate-600 border border-slate-200'
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            draft.activo !== false ? 'bg-emerald-500' : 'bg-slate-400'
-                          }`}
-                        />
+                    <td className={ui.cellPad}>
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 ${draft.activo !== false ? ui.badgeOn : ui.badgeOff}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${draft.activo !== false ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                         {draft.activo !== false ? 'Activo' : 'Inactivo'}
                       </span>
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center text-xs">
-                      <button
-                        type="button"
-                        className="text-emerald-600 hover:text-emerald-800 mr-2"
-                        disabled={saving}
-                        onClick={saveCar}
-                      >
-                        Guardar
-                      </button>
-                      <button
-                        type="button"
-                        className="text-slate-500 hover:text-slate-700"
-                        disabled={saving}
-                        onClick={cancelEdit}
-                      >
-                        Cancelar
-                      </button>
+                    <td className={`${ui.cellPad} text-center text-xs`}>
+                      <button type="button" className={ui.linkSave} disabled={saving} onClick={saveCar}>Guardar</button>
+                      <button type="button" className={ui.linkCancel} disabled={saving} onClick={cancelEdit}>Cancelar</button>
                     </td>
                   </tr>
                 )
               }
 
               return (
-                <tr
-                  key={car.id}
-                  className={`${isOdd ? 'bg-slate-50/40' : 'bg-white'} hover:bg-blue-50/40`}
-                >
-                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-slate-900">
-                    {car.placa}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">
-                    {car.soat_vencimiento || '-'}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">
-                    {car.tecnomecanica_vencimiento || '-'}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">
-                    {car.modelo || '-'}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">
-                    {renderOwnerName(car)}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 ${
-                        activo
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-slate-50 text-slate-600 border border-slate-200'
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          activo ? 'bg-emerald-500' : 'bg-slate-400'
-                        }`}
-                      />
+                <tr key={car.id} className={ui.row(isOdd)}>
+                  <td className={ui.cellStrong}>{car.placa}</td>
+                  <td className={ui.cell}>{car.soat_vencimiento || '-'}</td>
+                  <td className={ui.cell}>{car.tecnomecanica_vencimiento || '-'}</td>
+                  <td className={ui.cell}>{car.modelo || '-'}</td>
+                  <td className={ui.cell}>{renderOwnerName(car)}</td>
+                  <td className={ui.cellPad}>
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 ${activo ? ui.badgeOn : ui.badgeOff}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${activo ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                       {activo ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-center text-xs">
-                    <button
-                      type="button"
-                      className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500 mr-1"
-                      onClick={() => startEdit(car)}
-                      title="Editar carro"
-                    >
+                  <td className={`${ui.cellPad} text-center text-xs`}>
+                    <button type="button" className={ui.iconEdit} onClick={() => startEdit(car)} title="Editar carro">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                        />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
                     </button>
-                    <button
-                      type="button"
-                      className="p-1.5 rounded-full hover:bg-rose-50 text-rose-500"
-                      onClick={() => deleteCar(car)}
-                      title="Eliminar carro"
-                    >
+                    <button type="button" className={ui.iconDelete} onClick={() => deleteCar(car)} title="Eliminar carro">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </td>

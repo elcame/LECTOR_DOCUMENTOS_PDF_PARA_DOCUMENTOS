@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { ROUTES } from '../../config/constants'
+import { NavIcon } from './sidebar/NavIcon'
+import SideNavItem from './sidebar/SideNavItem'
+import SideNavGroup from './sidebar/SideNavGroup'
+import SidebarBrand from './sidebar/SidebarBrand'
+import SidebarUser from './sidebar/SidebarUser'
 
 const LS_KEY = 'app_sidebar_collapsed'
 const LS_GROUPS = 'app_sidebar_groups'
@@ -9,63 +15,23 @@ function classNames(...parts) {
   return parts.filter(Boolean).join(' ')
 }
 
-function SectionTitle({ children, collapsed }) {
-  if (collapsed) return <div className="h-3" />
-  return (
-    <div className="px-3 pt-3 pb-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-      {children}
-    </div>
-  )
-}
-
-function SideItem({ to, label, icon, collapsed, end = false }) {
-  return (
-    <NavLink
-      to={to}
-      end={end}
-      className={({ isActive }) =>
-        classNames(
-          'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition',
-          isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
-        )
-      }
-      title={label}
-    >
-      <span className="text-base">{icon}</span>
-      {!collapsed && <span className="truncate">{label}</span>}
-    </NavLink>
-  )
-}
-
-function Group({ id, title, icon, collapsed, open, onToggle, children }) {
-  return (
-    <div className="mt-2">
-      <button
-        type="button"
-        onClick={onToggle}
-        className={classNames(
-          'w-full flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-semibold',
-          'text-slate-700 hover:bg-slate-50'
-        )}
-        title={title}
-      >
-        <span className="flex items-center gap-2 min-w-0">
-          <span className="text-base">{icon}</span>
-          {!collapsed && <span className="truncate">{title}</span>}
-        </span>
-        {!collapsed && (
-          <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={open ? 'M19 15l-7-7-7 7' : 'M5 9l7 7 7-7'} />
-          </svg>
-        )}
-      </button>
-      {open && (
-        <div className={classNames('mt-1 space-y-1', collapsed ? 'px-0' : 'pl-6 pr-1')}>
-          {children}
-        </div>
-      )}
-    </div>
-  )
+function pageTitle(pathname) {
+  const map = {
+    '/dashboard': 'Dashboard',
+    '/productividad': 'Productividad',
+    '/carros': 'Carros',
+    '/gps': 'GPS',
+    '/manifiestos': 'Manifiestos',
+    '/administrador-operacion': 'Administrador de operación',
+    '/administrador-operacion/cargar': 'Cargar y procesar',
+    '/administrador-operacion/carpetas': 'Carpetas procesadas',
+    '/administrador-operacion/consultar': 'Consultar',
+    '/administrador-operacion/estadisticas': 'Estadísticas',
+    '/administrador-operacion/tipos': 'Tipos de manifiesto',
+    '/administrador': 'Administración',
+  }
+  if (pathname.endsWith('/estado') && pathname.startsWith('/carros/')) return 'Estado del vehículo'
+  return map[pathname] || 'ACR Operaciones'
 }
 
 export default function AppShell({ children }) {
@@ -92,9 +58,22 @@ export default function AppShell({ children }) {
   })
 
   const isConductor = user?.role === 'conductor'
+  const sidebarWidth = collapsed ? 'w-[76px]' : 'w-[280px]'
+  const mainPadding = collapsed ? 'md:pl-[76px]' : 'md:pl-[280px]'
+  const isEstadoCarro = location.pathname.endsWith('/estado') && location.pathname.startsWith('/carros/')
+  const isFlotaPage = location.pathname === '/carros'
 
-  const baseWidth = collapsed ? 'w-[72px]' : 'w-[248px]'
-  const mainPadding = collapsed ? 'md:pl-[92px]' : 'md:pl-[268px]'
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [location.pathname, location.search])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_GROUPS, JSON.stringify(groups))
+    } catch {
+      // ignore
+    }
+  }, [groups])
 
   const toggleCollapsed = () => {
     setCollapsed((v) => {
@@ -113,210 +92,163 @@ export default function AppShell({ children }) {
     navigate('/login')
   }
 
-  const operacionesLinks = useMemo(
+  const adminOperacionLinks = useMemo(
     () => [
-      { to: '/operaciones?section=tabla', label: 'Ver tabla', icon: '📋' },
-      { to: '/operaciones?section=pdfs', label: 'Ver PDFs', icon: '📄' },
-      { to: '/operaciones?section=stats', label: 'Estadísticas', icon: '📊' },
-      { to: '/operaciones?section=procesar', label: 'Procesar carpeta', icon: '📂' },
-      { to: '/operaciones?section=subir', label: 'Subir carpeta', icon: '⬆️' },
+      { to: ROUTES.ADMIN_OPERACION_CARGAR, label: 'Cargar y procesar', icon: 'upload' },
+      { to: ROUTES.ADMIN_OPERACION_CARPETAS, label: 'Carpetas procesadas', icon: 'folder' },
+      { to: ROUTES.ADMIN_OPERACION_CONSULTAR, label: 'Consultar', icon: 'search' },
+      { to: ROUTES.ADMIN_OPERACION_ESTADISTICAS, label: 'Estadísticas', icon: 'chart' },
+      { to: ROUTES.ADMIN_OPERACION_TIPOS, label: 'Tipos de manifiesto', icon: 'tag' },
     ],
     []
   )
 
   const manifiestosLinks = useMemo(
     () => [
-      { to: '/manifiestos?section=gastos', label: 'Gastos de viaje', icon: '💰' },
-      { to: '/manifiestos?section=anticipo', label: 'Anticipo', icon: '💵' },
-      { to: '/manifiestos?section=tipos', label: 'Tipos de gasto', icon: '🏷️' },
-      { to: '/manifiestos?section=hojas', label: 'Hojas de gasto', icon: '🧾' },
-      ...(!isConductor ? [
-        { to: '/manifiestos?section=graficas', label: 'Gráficas', icon: '📈' },
-        { to: '/manifiestos?section=carros_producido', label: 'Carros producido', icon: '🚚' },
-      ] : []),
+      { to: '/manifiestos?section=gastos', label: 'Gastos de viaje', icon: 'wallet' },
+      { to: '/manifiestos?section=anticipo', label: 'Anticipo', icon: 'banknote' },
+      { to: '/manifiestos?section=tipos', label: 'Tipos de gasto', icon: 'tag' },
+      { to: '/manifiestos?section=hojas', label: 'Hojas de gasto', icon: 'receipt' },
+      ...(!isConductor
+        ? [
+            { to: '/manifiestos?section=graficas', label: 'Gráficas', icon: 'chart' },
+            { to: '/manifiestos?section=carros_producido', label: 'Carros producido', icon: 'truck' },
+          ]
+        : []),
     ],
     [isConductor]
   )
 
   const adminLinks = useMemo(
     () => [
-      { to: '/administrador', label: 'Administración', icon: '⚙️', show: isAdmin },
-      { to: '/administrador?tab=trailer', label: 'Trailer', icon: '🚛', show: isAdmin },
-      { to: '/administrador?tab=proveedores', label: 'Proveedores', icon: '🏪', show: isAdmin },
+      { to: '/administrador', label: 'Usuarios y roles', icon: 'cog', show: isAdmin },
+      { to: '/administrador?tab=trailer', label: 'Trailer', icon: 'truck', show: isAdmin },
+      { to: '/administrador?tab=proveedores', label: 'Proveedores', icon: 'store', show: isAdmin },
     ],
     [isAdmin]
   )
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(LS_GROUPS, JSON.stringify(groups))
-    } catch {
-      // ignore
-    }
-  }, [groups])
-
   const sidebar = (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+    <div className="flex h-full min-h-0 w-full flex-col bg-slate-950 text-slate-200 [color-scheme:dark]">
+      <SidebarBrand collapsed={collapsed} onToggle={toggleCollapsed} />
+
+      <nav className="sidebar-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
         {!collapsed && (
-          <div className="flex flex-col">
-            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-              Menú
-            </div>
-            <div className="text-sm font-semibold text-slate-900">Lector de Manifiestos</div>
+          <div className="px-2.5 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            General
           </div>
         )}
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500"
-          title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d={collapsed ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'}
-            />
-          </svg>
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-2 py-3">
-        <SectionTitle collapsed={collapsed}>General</SectionTitle>
-        <div className="space-y-1">
-          <SideItem to="/dashboard" label="Dashboard" icon="🏠" collapsed={collapsed} end />
-          <SideItem to="/productividad" label="Productividad" icon="✅" collapsed={collapsed} />
-          {!isConductor && <SideItem to="/carros" label="Carros" icon="🚚" collapsed={collapsed} />}
-          {!isConductor && <SideItem to="/gps" label="GPS" icon="📍" collapsed={collapsed} />}
+        <div className="space-y-0.5">
+          <SideNavItem to="/dashboard" label="Dashboard" icon="home" collapsed={collapsed} end />
+          <SideNavItem to="/productividad" label="Productividad" icon="check" collapsed={collapsed} />
+          {!isConductor && <SideNavItem to="/carros" label="Carros" icon="truck" collapsed={collapsed} />}
+          {!isConductor && <SideNavItem to="/gps" label="GPS" icon="pin" collapsed={collapsed} />}
         </div>
 
-        <Group
+        <SideNavGroup
           id="manifiestos"
           title="Manifiestos"
-          icon="📄"
+          icon="document"
           collapsed={collapsed}
           open={!!groups.manifiestos}
           onToggle={() => setGroups((g) => ({ ...g, manifiestos: !g.manifiestos }))}
         >
           {manifiestosLinks.map((it) => (
-            <SideItem key={it.to} to={it.to} label={it.label} icon={it.icon} collapsed={collapsed} />
+            <SideNavItem key={it.to} to={it.to} label={it.label} icon={it.icon} collapsed={collapsed} />
           ))}
-        </Group>
+        </SideNavGroup>
 
         {!isConductor && (
-          <Group
+          <SideNavGroup
             id="operaciones"
-            title="Operaciones"
-            icon="📊"
+            title="Administrador de operación"
+            icon="layers"
             collapsed={collapsed}
             open={!!groups.operaciones}
             onToggle={() => setGroups((g) => ({ ...g, operaciones: !g.operaciones }))}
+            to={ROUTES.ADMIN_OPERACION}
           >
-            {operacionesLinks.map((it) => (
-              <SideItem key={it.to} to={it.to} label={it.label} icon={it.icon} collapsed={collapsed} />
+            {adminOperacionLinks.map((it) => (
+              <SideNavItem key={it.to} to={it.to} label={it.label} icon={it.icon} collapsed={collapsed} />
             ))}
-          </Group>
+          </SideNavGroup>
         )}
 
         {adminLinks.some((l) => l.show) && (
-          <Group
+          <SideNavGroup
             id="admin"
             title="Administración"
-            icon="⚙️"
+            icon="cog"
             collapsed={collapsed}
             open={!!groups.admin}
             onToggle={() => setGroups((g) => ({ ...g, admin: !g.admin }))}
           >
             {adminLinks.filter((l) => l.show).map((it) => (
-              <SideItem key={it.to} to={it.to} label={it.label} icon={it.icon} collapsed={collapsed} />
+              <SideNavItem key={it.to} to={it.to} label={it.label} icon={it.icon} collapsed={collapsed} />
             ))}
-          </Group>
+          </SideNavGroup>
         )}
-      </div>
+      </nav>
 
-      <div className="border-t border-slate-200 p-3">
-        {!collapsed ? (
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-slate-900 truncate">{user?.username}</div>
-              <div className="text-xs text-slate-500 truncate">{user?.role}</div>
-            </div>
-            <button type="button" className="btn btn-outline btn-sm" onClick={handleLogout}>
-              Salir
-            </button>
-          </div>
-        ) : (
-          <button type="button" className="btn btn-outline btn-sm w-full" onClick={handleLogout} title="Salir">
-            ⎋
-          </button>
-        )}
-      </div>
+      <SidebarUser
+        username={user?.username}
+        role={user?.role}
+        collapsed={collapsed}
+        onLogout={handleLogout}
+      />
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Mobile top bar */}
-      <div className="md:hidden sticky top-0 z-40 bg-white border-b border-slate-200">
-        <div className="h-14 px-4 flex items-center justify-between">
+    <div className={classNames('min-h-screen', isFlotaPage || isEstadoCarro ? 'bg-[#0b1220]' : 'bg-slate-50')}>
+      <div className="md:hidden sticky top-0 z-40 border-b border-slate-200 bg-slate-950 text-white">
+        <div className="flex h-14 items-center justify-between px-3">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-700"
+            className="rounded-lg p-2 text-slate-200 hover:bg-white/10"
             title="Abrir menú"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <NavIcon name="menu" className="h-5 w-5" />
           </button>
-          <div className="text-sm font-semibold text-slate-900">
-            {location.pathname.replace('/', '').toUpperCase() || 'DASHBOARD'}
-          </div>
+          <div className="truncate px-2 text-sm font-semibold">{pageTitle(location.pathname)}</div>
           <button
             type="button"
             onClick={handleLogout}
-            className="p-2 rounded-lg hover:bg-slate-100 text-slate-700"
+            className="rounded-lg p-2 text-slate-200 hover:bg-white/10"
             title="Salir"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
-            </svg>
+            <NavIcon name="logout" className="h-5 w-5" />
           </button>
         </div>
       </div>
 
-      {/* Desktop sidebar */}
       <aside
         className={classNames(
-          'fixed inset-y-0 left-0 z-30 bg-white border-r border-slate-200 shadow-sm transition-all duration-300 hidden md:flex',
-          baseWidth
+          'fixed inset-y-0 left-0 z-30 hidden overflow-hidden transition-[width] duration-200 md:flex',
+          sidebarWidth
         )}
       >
         {sidebar}
       </aside>
 
-      {/* Mobile sidebar */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50 md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/50"
             onClick={() => setMobileOpen(false)}
             aria-label="Cerrar menú"
           />
-          <aside className={classNames('absolute inset-y-0 left-0 bg-white border-r border-slate-200 shadow-lg', baseWidth)}>
-            <div className="relative h-full">
+          <aside className="absolute inset-y-0 left-0 flex w-[280px] overflow-hidden shadow-2xl">
+            <div className="relative h-full w-full">
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="absolute top-3 right-3 p-1.5 rounded-full bg-slate-100 text-slate-600"
+                className="absolute right-2 top-3 z-10 rounded-md p-1.5 text-slate-300 hover:bg-white/10"
                 title="Cerrar menú"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <NavIcon name="close" className="h-4 w-4" />
               </button>
               {sidebar}
             </div>
@@ -324,10 +256,18 @@ export default function AppShell({ children }) {
         </div>
       )}
 
-      <main className={classNames('max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 px-4', mainPadding)}>
+      <main
+        className={classNames(
+          mainPadding,
+          isEstadoCarro
+            ? 'mx-auto max-w-none px-0 py-0'
+            : isFlotaPage
+              ? 'mx-auto max-w-none px-0 py-0'
+              : 'mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8',
+        )}
+      >
         {children}
       </main>
     </div>
   )
 }
-

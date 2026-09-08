@@ -23,6 +23,11 @@ export const carrosService = {
     return response.data
   },
 
+  async getCarro(id, options = {}) {
+    const response = await api.get(ENDPOINTS.CARROS.BY_ID(id), { params: options })
+    return response.data
+  },
+
   async getCarroByPlaca(placa, options = {}) {
     const params = { placa, include_owner: true, ...options }
     const response = await api.get(ENDPOINTS.CARROS.BASE, { params })

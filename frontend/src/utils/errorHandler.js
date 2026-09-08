@@ -13,9 +13,9 @@ export const errorHandler = (error) => {
       case 401:
         // No autorizado - NO limpiar token ni redirigir aquí
         // El interceptor de Axios y el AuthContext manejan la lógica de sesión
-        // Esto evita la cascada: endpoint 401 -> borra token -> recarga -> /me sin token -> 401
+        // En login/register el backend envía el motivo real (credenciales, usuario inactivo, etc.)
         return { 
-          message: 'Sesión expirada. Por favor, inicia sesión nuevamente.', 
+          message: data?.message || 'Sesión expirada. Por favor, inicia sesión nuevamente.', 
           status,
           code: 'UNAUTHORIZED'
         }
@@ -45,14 +45,14 @@ export const errorHandler = (error) => {
       
       case 500:
         return { 
-          message: data?.message || 'Error del servidor. Por favor, intenta más tarde.', 
+          message: data?.message || data?.error || 'Error del servidor. Por favor, intenta más tarde.', 
           status,
           code: 'SERVER_ERROR'
         }
       
       default:
         return { 
-          message: data?.message || 'Error desconocido', 
+          message: data?.message || data?.error || 'Error desconocido', 
           status,
           code: 'UNKNOWN_ERROR',
           data: data 

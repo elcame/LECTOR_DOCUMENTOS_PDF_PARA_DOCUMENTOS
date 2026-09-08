@@ -30,7 +30,7 @@ def create_app(config_class=Config):
     
     # Configurar CORS para permitir requests del frontend
     CORS(app, 
-         origins=["http://localhost:3000", "http://localhost:5173", "https://almacenamiento-acr.web.app", "https://almacenamiento-acr.firebaseapp.com"],
+         origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:5174", "https://almacenamiento-acr.web.app", "https://almacenamiento-acr.firebaseapp.com"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          allow_headers=["Content-Type", "Authorization", "Accept", "X-Requested-With"],
          supports_credentials=True)
@@ -58,6 +58,7 @@ def create_app(config_class=Config):
     from app.api.manifiestos_processing import bp as manifiestos_processing_bp
     from app.api.manifiestos_qr import bp as manifiestos_qr_bp
     from app.api.manifiestos_pdf_ops import bp as manifiestos_pdf_ops_bp
+    from app.api.manifiestos_duplicates import bp as manifiestos_duplicates_bp
     from app.api.carros import bp as carros_bp
     from app.api.ingresos_detalle import bp as ingresos_detalle_bp  # 🔥 NUEVO
     from app.api.gps import bp as gps_bp
@@ -65,6 +66,8 @@ def create_app(config_class=Config):
     from app.api.trailers import bp as trailers_bp
     from app.api.providers import bp as providers_bp
     from app.api.productivity import bp as productivity_bp
+    from app.api.tipos_manifiesto import bp as tipos_manifiesto_bp
+    from app.api.carro_piezas import bp as carro_piezas_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(usuarios_bp, url_prefix='/api/usuarios')
@@ -81,6 +84,7 @@ def create_app(config_class=Config):
     app.register_blueprint(manifiestos_processing_bp, url_prefix='/api/manifiestos')
     app.register_blueprint(manifiestos_qr_bp, url_prefix='/api/manifiestos')
     app.register_blueprint(manifiestos_pdf_ops_bp, url_prefix='/api/manifiestos')
+    app.register_blueprint(manifiestos_duplicates_bp, url_prefix='/api/manifiestos')
     app.register_blueprint(carros_bp, url_prefix='/api')
     app.register_blueprint(ingresos_detalle_bp, url_prefix='/api/ingresos')  # 🔥 NUEVO
     app.register_blueprint(gps_bp, url_prefix='/api/gps')
@@ -88,6 +92,8 @@ def create_app(config_class=Config):
     app.register_blueprint(trailers_bp, url_prefix='/api')
     app.register_blueprint(providers_bp, url_prefix='/api')
     app.register_blueprint(productivity_bp, url_prefix='/api/productividad')
+    app.register_blueprint(tipos_manifiesto_bp, url_prefix='/api')
+    app.register_blueprint(carro_piezas_bp, url_prefix='/api')
 
     # Seed de roles predeterminados
     with app.app_context():

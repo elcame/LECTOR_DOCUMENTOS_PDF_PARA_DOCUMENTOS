@@ -1,6 +1,7 @@
 export const API_CONFIG = {
  BASE_URL: (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000') + '/api',
   TIMEOUT: parseInt(import.meta.env.VITE_API_TIMEOUT || '30000'),
+  LONG_TIMEOUT: parseInt(import.meta.env.VITE_API_LONG_TIMEOUT || '600000'),
 }
 
 export const APP_CONFIG = {
@@ -15,7 +16,14 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   MANIFIESTOS: '/manifiestos',
   OPERACIONES: '/operaciones',
+  ADMIN_OPERACION: '/administrador-operacion',
+  ADMIN_OPERACION_CARGAR: '/administrador-operacion/cargar',
+  ADMIN_OPERACION_CARPETAS: '/administrador-operacion/carpetas',
+  ADMIN_OPERACION_CONSULTAR: '/administrador-operacion/consultar',
+  ADMIN_OPERACION_ESTADISTICAS: '/administrador-operacion/estadisticas',
+  ADMIN_OPERACION_TIPOS: '/administrador-operacion/tipos',
   CARROS: '/carros',
+  CARRO_ESTADO: (id) => `/carros/${id}/estado`,
   ADMINISTRADOR: '/administrador',
   PROVEEDORES: '/proveedores',
   ROLES: '/roles',
@@ -51,4 +59,5 @@ export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth_token',
   USER_DATA: 'user_data',
   THEME: 'theme',
+  PDF_RENAME_PATTERNS: 'pdf_rename_patterns',
 }

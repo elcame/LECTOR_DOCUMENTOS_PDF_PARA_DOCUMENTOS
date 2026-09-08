@@ -147,7 +147,7 @@ def extraer_datos_manifiesto(texto_extraido):
     fecha_simple = re.findall(palabraclave1_simple, texto_extraido)
     
     # 🔥 DEPURACIÓN: Mostrar qué fechas se encuentran
-    print(f"🔍 DEBUG - Fechas encontradas:")
+    print("[DEBUG] Fechas encontradas:")
     print(f"  - palabraclave1: {fecha}")
     print(f"  - palabraclave1_simple: {fecha_simple}")
     
@@ -389,7 +389,7 @@ def extraer_datos_manifiesto(texto_extraido):
         fecha_inicio = limpiar_fecha(fecha[0]) if fecha else 'No encontrada'
         fecha_retorno = 'No encontrada'
     
-    print(f"🔍 DEBUG - Fechas limpias:")
+    print("[DEBUG] Fechas limpias:")
     print(f"  - fecha_inicio: {fecha_inicio}")
     print(f"  - fecha_retorno: {fecha_retorno}")
     

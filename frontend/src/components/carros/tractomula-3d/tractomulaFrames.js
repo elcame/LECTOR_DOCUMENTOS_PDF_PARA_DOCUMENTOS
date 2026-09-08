@@ -1,0 +1,102 @@
+export const TRACTOMULA_FRAMES = [
+  { src: '/tractomula/lado.png', label: 'Lado izquierdo' },
+  { src: '/tractomula/rear-left.png', label: 'Atrás izquierdo' },
+  { src: '/tractomula/right.png', label: 'Lado derecho' },
+  { src: '/tractomula/front-right.png', label: '3/4 derecho' },
+  { src: '/tractomula/front.png', label: 'Frente' },
+  { src: '/tractomula/front-left.png', label: '3/4 izquierdo' },
+  { src: '/tractomula/left.png', label: 'Perfil izquierdo' },
+]
+
+// left/top/w/h en porcentaje del recuadro de la foto
+export const TRACTOMULA_HOTSPOTS = {
+  0: [
+    { id: 'TIRE_L_STEER', left: 13, top: 58, w: 9, h: 20 },
+    { id: 'RIM_L_STEER', left: 15.5, top: 65, w: 4, h: 8 },
+    { id: 'TIRE_L_D1_O', left: 60, top: 58, w: 8, h: 20 },
+    { id: 'TIRE_L_D1_I', left: 57, top: 58, w: 4, h: 20 },
+    { id: 'RIM_L_D1_O', left: 62, top: 65, w: 4, h: 8 },
+    { id: 'TIRE_L_D2_O', left: 72, top: 58, w: 8, h: 20 },
+    { id: 'TIRE_L_D2_I', left: 69, top: 58, w: 4, h: 20 },
+    { id: 'RIM_L_D2_O', left: 74, top: 65, w: 4, h: 8 },
+    { id: 'TANK', left: 40, top: 52, w: 14, h: 12 },
+    { id: 'EXHAUST', left: 46, top: 10, w: 4, h: 28 },
+    { id: 'MIRROR_L', left: 32, top: 24, w: 4, h: 10 },
+    { id: 'BANDA_D1_L_UP', left: 61, top: 52, w: 6, h: 5 },
+    { id: 'BANDA_D1_L_DOWN', left: 61, top: 78, w: 6, h: 5 },
+    { id: 'BANDA_D2_L_UP', left: 73, top: 52, w: 6, h: 5 },
+    { id: 'BANDA_D2_L_DOWN', left: 73, top: 78, w: 6, h: 5 },
+  ],
+  1: [
+    { id: 'TIRE_L_D1_O', left: 28, top: 60, w: 8, h: 16 },
+    { id: 'TIRE_L_D2_O', left: 38, top: 60, w: 8, h: 16 },
+    { id: 'RODAJA_1', left: 48, top: 58, w: 6, h: 8 },
+    { id: 'EXHAUST', left: 42, top: 18, w: 5, h: 22 },
+  ],
+  2: [
+    { id: 'TIRE_R_STEER', left: 70, top: 58, w: 8, h: 18 },
+    { id: 'RIM_R_STEER', left: 72, top: 64, w: 4, h: 8 },
+    { id: 'TIRE_R_D1_O', left: 32, top: 58, w: 7, h: 16 },
+    { id: 'TIRE_R_D1_I', left: 38, top: 58, w: 4, h: 16 },
+    { id: 'TIRE_R_D2_O', left: 22, top: 58, w: 7, h: 16 },
+    { id: 'TIRE_R_D2_I', left: 28, top: 58, w: 4, h: 16 },
+    { id: 'RIM_R_D1_O', left: 33.5, top: 64, w: 4, h: 8 },
+    { id: 'RIM_R_D2_O', left: 23.5, top: 64, w: 4, h: 8 },
+    { id: 'TANK', left: 44, top: 50, w: 12, h: 12 },
+    { id: 'MIRROR_R', left: 60, top: 26, w: 4, h: 10 },
+    { id: 'BANDA_D1_R_UP', left: 34, top: 52, w: 5, h: 5 },
+    { id: 'BANDA_D1_R_DOWN', left: 34, top: 76, w: 5, h: 5 },
+    { id: 'BANDA_D2_R_UP', left: 24, top: 52, w: 5, h: 5 },
+    { id: 'BANDA_D2_R_DOWN', left: 24, top: 76, w: 5, h: 5 },
+    { id: 'BATTERY_1', left: 48, top: 56, w: 5, h: 6 },
+    { id: 'OIL_FILTER', left: 62, top: 54, w: 4, h: 6 },
+  ],
+  3: [
+    { id: 'TIRE_R_STEER', left: 72, top: 60, w: 9, h: 16 },
+    { id: 'RIM_R_STEER', left: 74.5, top: 66, w: 4, h: 7 },
+    { id: 'LIGHT_R', left: 82, top: 50, w: 6, h: 7 },
+    { id: 'MIRROR_R', left: 64, top: 30, w: 5, h: 9 },
+    { id: 'TIRE_R_D1_O', left: 36, top: 62, w: 8, h: 15 },
+    { id: 'TIRE_R_D2_O', left: 26, top: 62, w: 8, h: 15 },
+  ],
+  4: [
+    { id: 'LIGHT_L', left: 28, top: 48, w: 8, h: 8 },
+    { id: 'LIGHT_R', left: 64, top: 48, w: 8, h: 8 },
+    { id: 'TIRE_L_STEER', left: 18, top: 62, w: 10, h: 16 },
+    { id: 'TIRE_R_STEER', left: 72, top: 62, w: 10, h: 16 },
+    { id: 'RIM_L_STEER', left: 21, top: 68, w: 4, h: 7 },
+    { id: 'RIM_R_STEER', left: 75, top: 68, w: 4, h: 7 },
+    { id: 'MIRROR_L', left: 22, top: 28, w: 6, h: 10 },
+    { id: 'MIRROR_R', left: 72, top: 28, w: 6, h: 10 },
+  ],
+  5: [
+    { id: 'TIRE_L_STEER', left: 18, top: 60, w: 9, h: 16 },
+    { id: 'RIM_L_STEER', left: 20.5, top: 66, w: 4, h: 7 },
+    { id: 'TIRE_L_D1_O', left: 56, top: 62, w: 8, h: 15 },
+    { id: 'TIRE_L_D2_O', left: 66, top: 62, w: 8, h: 15 },
+    { id: 'TANK', left: 40, top: 54, w: 13, h: 11 },
+    { id: 'LIGHT_L', left: 10, top: 50, w: 6, h: 7 },
+    { id: 'MIRROR_L', left: 30, top: 30, w: 5, h: 9 },
+    { id: 'EXHAUST', left: 46, top: 14, w: 5, h: 20 },
+  ],
+  6: [
+    { id: 'TIRE_L_STEER', left: 22, top: 58, w: 8, h: 18 },
+    { id: 'RIM_L_STEER', left: 24, top: 64, w: 4, h: 8 },
+    { id: 'TIRE_L_D1_O', left: 60, top: 58, w: 7, h: 16 },
+    { id: 'TIRE_L_D1_I', left: 57, top: 58, w: 4, h: 16 },
+    { id: 'TIRE_L_D2_O', left: 71, top: 58, w: 7, h: 16 },
+    { id: 'TIRE_L_D2_I', left: 68, top: 58, w: 4, h: 16 },
+    { id: 'TANK', left: 44, top: 50, w: 12, h: 12 },
+    { id: 'EXHAUST', left: 50, top: 12, w: 4, h: 28 },
+    { id: 'MIRROR_L', left: 36, top: 26, w: 4, h: 10 },
+    { id: 'BANDA_D1_L_UP', left: 61, top: 52, w: 5, h: 5 },
+    { id: 'BANDA_D2_L_UP', left: 72, top: 52, w: 5, h: 5 },
+    { id: 'TIRE_SPARE', left: 48, top: 38, w: 7, h: 10 },
+  ],
+}
+
+export function frameIndexForPieza(positionId) {
+  const entries = Object.entries(TRACTOMULA_HOTSPOTS)
+  const found = entries.find(([, spots]) => spots.some((spot) => spot.id === positionId))
+  return found ? Number(found[0]) : 0
+}

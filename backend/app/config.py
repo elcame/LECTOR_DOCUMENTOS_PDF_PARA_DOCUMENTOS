@@ -36,7 +36,7 @@ class Config:
     # Configuración de Firebase (opcional)
     # Ruta: backend/app/config/firebase-credentials.json
     FIREBASE_CREDENTIALS_PATH = Path(__file__).parent / 'config' / 'firebase-credentials.json'
-    FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', '')
+    FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', 'almacenamiento-acr')
     FIREBASE_STORAGE_BUCKET = os.environ.get('FIREBASE_STORAGE_BUCKET', 'almacenamiento-acr.firebasestorage.app')
 
     # Google Calendar OAuth (productividad) — .env o backend/app/config/google-oauth-client.json
@@ -54,17 +54,23 @@ class Config:
         Config.BASE_FOLDER.mkdir(exist_ok=True)
         Config.EXCEL_FOLDER.mkdir(exist_ok=True)
         
-        # Inicializar Firebase si está disponible
+        # Inicializar Firebase: JSON de servicio, o Application Default Credentials en local
         try:
             from app.config.firebase_config import FirebaseConfig
-            if Config.FIREBASE_CREDENTIALS_PATH.exists():
-                FirebaseConfig.initialize(
-                    credentials_path=str(Config.FIREBASE_CREDENTIALS_PATH),
-                    project_id=Config.FIREBASE_PROJECT_ID if Config.FIREBASE_PROJECT_ID else None,
-                    storage_bucket=Config.FIREBASE_STORAGE_BUCKET if Config.FIREBASE_STORAGE_BUCKET else None
-                )
+            credentials_path = (
+                str(Config.FIREBASE_CREDENTIALS_PATH)
+                if Config.FIREBASE_CREDENTIALS_PATH.exists()
+                else None
+            )
+            FirebaseConfig.initialize(
+                credentials_path=credentials_path,
+                project_id=Config.FIREBASE_PROJECT_ID or None,
+                storage_bucket=Config.FIREBASE_STORAGE_BUCKET or None
+            )
         except ImportError:
-            pass  # Firebase no está disponible
+            pass
+        except Exception as e:
+            print(f"[WARN] Firebase no inicializado: {e}")
 
 class DevelopmentConfig(Config):
     """Configuración de desarrollo"""

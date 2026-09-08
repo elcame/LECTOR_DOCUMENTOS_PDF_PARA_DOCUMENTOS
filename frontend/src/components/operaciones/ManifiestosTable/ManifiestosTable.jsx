@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { manifiestosService } from '../../../services/manifiestosService'
 import carrosService from '../../../services/carrosService'
+import useTiposManifiesto from '../../../hooks/useTiposManifiesto'
+import TipoSelect from '../../administrador-operacion/tipos/TipoSelect'
 import Loading from '../../common/Loading/Loading'
 import Modal from '../../common/Modal/Modal'
 
@@ -15,6 +17,8 @@ export default function ManifiestosTable({ folderName = null, refreshTrigger = 0
   const [editValue, setEditValue] = useState('')
   const [saving, setSaving] = useState(false)
   const [carInfoModal, setCarInfoModal] = useState({ open: false, loading: false, error: '', data: null })
+  const [savingTipoId, setSavingTipoId] = useState('')
+  const { tipos, loading: loadingTipos } = useTiposManifiesto(true)
 
   // Cargar manifiestos cuando el componente se monta o cambia el folder
   useEffect(() => {
@@ -136,6 +140,28 @@ export default function ManifiestosTable({ folderName = null, refreshTrigger = 0
   const handleCancelEdit = () => {
     setEditingCell(null)
     setEditValue('')
+  }
+
+  const handleChangeTipo = async (index, tipoId) => {
+    const manifiesto = manifiestos[index]
+    const manifestId = manifiesto?.id
+    if (!manifestId) return
+    const tipo = tipos.find((t) => t.id === tipoId)
+    setSavingTipoId(manifestId)
+    try {
+      await manifiestosService.updateField(manifestId, 'tipo_id', tipoId)
+      const updated = [...manifiestos]
+      updated[index] = {
+        ...updated[index],
+        tipo_id: tipoId,
+        tipo_nombre: tipo?.nombre || '',
+      }
+      setManifiestos(updated)
+    } catch (error) {
+      alert('Error al guardar tipo: ' + (error.message || 'No se pudo actualizar'))
+    } finally {
+      setSavingTipoId('')
+    }
   }
 
   const openCarInfo = async (manifiesto) => {
@@ -399,6 +425,9 @@ export default function ManifiestosTable({ folderName = null, refreshTrigger = 0
                     Destino
                   </th>
                   <th className="px-3 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                    Tipo
+                  </th>
+                  <th className="px-3 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                     Estado
                   </th>
                   <th className="px-3 py-3 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
@@ -475,6 +504,19 @@ export default function ManifiestosTable({ folderName = null, refreshTrigger = 0
                       {/* Destino - Editable */}
                       <td className="px-3 py-3 whitespace-nowrap">
                         {renderEditableCell(manifiesto, index, 'destino')}
+                      </td>
+
+                      {/* Tipo */}
+                      <td className="px-3 py-3 whitespace-nowrap min-w-[160px]">
+                        <TipoSelect
+                          className="input py-1.5 px-2 text-sm"
+                          value={manifiesto.tipo_id || ''}
+                          onChange={(tipoId) => handleChangeTipo(index, tipoId)}
+                          tipos={tipos}
+                          loading={loadingTipos}
+                          disabled={savingTipoId === manifiesto.id}
+                          currentLabel={manifiesto.tipo_nombre}
+                        />
                       </td>
 
                       {/* Estado */}

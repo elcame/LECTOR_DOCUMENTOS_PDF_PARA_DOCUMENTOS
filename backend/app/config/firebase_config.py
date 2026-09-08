@@ -64,7 +64,7 @@ class FirebaseConfig:
                     app_options["projectId"] = project_id
                 if storage_bucket:
                     app_options["storageBucket"] = storage_bucket
-                firebase_admin.initialize_app(app_options if app_options else None)
+                firebase_admin.initialize_app(options=app_options if app_options else None)
             
             cls._db = firestore.client()
             # Guardar el nombre del bucket para usarlo después

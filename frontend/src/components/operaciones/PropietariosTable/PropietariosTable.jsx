@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import carrosService from '../../../services/carrosService'
 import Loading from '../../common/Loading/Loading'
 import Modal from '../../common/Modal/Modal'
+import { garageTableTone } from '../../carros/flota/garageTableTone'
 
-export default function PropietariosTable() {
+export default function PropietariosTable({ tone = 'light' }) {
+  const ui = garageTableTone(tone === 'dark', { compact: true })
   const [propietarios, setPropietarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -120,118 +122,59 @@ export default function PropietariosTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">Propietarios</h2>
-          <p className="text-xs text-slate-500">
+          <h2 className={ui.title}>Propietarios</h2>
+          <p className={ui.subtitle}>
             Registra y administra los propietarios de los vehículos.
           </p>
         </div>
-        <button
-          type="button"
-          className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700"
-          onClick={openNew}
-        >
+        <button type="button" className={ui.btnPrimary} onClick={openNew}>
           + Nuevo propietario
         </button>
       </div>
 
-      {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-xs">
-          {error}
-        </div>
+      {error && !modalOpen && (
+        <div className={ui.error}>{error}</div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="min-w-[700px] w-full text-sm divide-y divide-slate-200">
-          <thead className="bg-slate-50 sticky top-0 z-10">
+      <div className={ui.tableWrap}>
+        <table className={ui.table}>
+          <thead className={ui.thead}>
             <tr>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Nombre
-              </th>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Documento
-              </th>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Teléfono
-              </th>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Email
-              </th>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Estado
-              </th>
-              <th className="px-3 py-2 text-center text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                Acciones
-              </th>
+              <th className={ui.th}>Nombre</th>
+              <th className={ui.th}>Documento</th>
+              <th className={ui.th}>Teléfono</th>
+              <th className={ui.th}>Email</th>
+              <th className={ui.th}>Estado</th>
+              <th className={ui.thCenter}>Acciones</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-slate-100">
+          <tbody className={ui.tbody}>
             {propietarios.map((owner, index) => {
               const isOdd = index % 2 === 1
               const activo = owner.activo !== false
               return (
-                <tr
-                  key={owner.id}
-                  className={`${isOdd ? 'bg-slate-50/40' : 'bg-white'} hover:bg-blue-50/40`}
-                >
-                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-slate-900">
-                    {owner.nombre}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">
-                    {owner.documento || '-'}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">
-                    {owner.telefono || '-'}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-700">
-                    {owner.email || '-'}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 ${
-                        activo
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-slate-50 text-slate-600 border border-slate-200'
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          activo ? 'bg-emerald-500' : 'bg-slate-400'
-                        }`}
-                      />
+                <tr key={owner.id} className={ui.row(isOdd)}>
+                  <td className={ui.cellStrong}>{owner.nombre}</td>
+                  <td className={ui.cell}>{owner.documento || '-'}</td>
+                  <td className={ui.cell}>{owner.telefono || '-'}</td>
+                  <td className={ui.cell}>{owner.email || '-'}</td>
+                  <td className={ui.cellPad}>
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 ${activo ? ui.badgeOn : ui.badgeOff}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${activo ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                       {activo ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-center text-xs">
-                    <button
-                      type="button"
-                      className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500 mr-1"
-                      onClick={() => openEdit(owner)}
-                      title="Editar propietario"
-                    >
+                  <td className={`${ui.cellPad} text-center text-xs`}>
+                    <button type="button" className={ui.iconEdit} onClick={() => openEdit(owner)} title="Editar propietario">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                        />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
                     </button>
-                    <button
-                      type="button"
-                      className="p-1.5 rounded-full hover:bg-rose-50 text-rose-500"
-                      onClick={() => deleteOwner(owner)}
-                      title="Marcar como inactivo"
-                    >
+                    <button type="button" className={ui.iconDelete} onClick={() => deleteOwner(owner)} title="Marcar como inactivo">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </td>

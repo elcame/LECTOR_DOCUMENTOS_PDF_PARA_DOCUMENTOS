@@ -3,7 +3,32 @@
  */
 import api from '../api'
 import { ENDPOINTS } from '../api/endpoints'
+import { API_CONFIG } from '../config/constants'
 import { buildAuthenticatedApiUrl } from '../utils/authenticatedApiUrl'
+
+function triggerBrowserDownload(blobPart, filename, mimeType) {
+  const url = window.URL.createObjectURL(new Blob([blobPart], { type: mimeType }))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}
+
+async function rejectIfJsonBlob(response) {
+  const contentType = String(response.headers['content-type'] || '')
+  if (!contentType.includes('application/json') || !(response.data instanceof Blob)) return
+  const text = await response.data.text()
+  let payload = {}
+  try {
+    payload = JSON.parse(text)
+  } catch {
+    payload = {}
+  }
+  throw new Error(payload.error || payload.message || 'No se pudo completar la descarga.')
+}
 
 export const manifiestosService = {
   /**
@@ -41,12 +66,13 @@ export const manifiestosService = {
     return response.data
   },
 
-  async uploadFolder(folderName, files) {
+  async uploadFolder(folderName, files, { onProgress } = {}) {
     const results = []
     let saved = 0
     let skipped = 0
 
-    for (const f of files) {
+    for (let i = 0; i < files.length; i += 1) {
+      const f = files[i]
       try {
         const res = await this.uploadFile(folderName, f)
         if (res?.success) {
@@ -58,6 +84,11 @@ export const manifiestosService = {
       } catch (e) {
         skipped += 1
       }
+      onProgress?.({
+        current: i + 1,
+        total: files.length,
+        percent: Math.round(((i + 1) / files.length) * 100),
+      })
     }
 
     return {
@@ -75,8 +106,12 @@ export const manifiestosService = {
   /**
    * Procesar carpeta de manifiestos (por nombre de carpeta)
    */
-  async processFolder(folderName) {
-    const response = await api.post(ENDPOINTS.MANIFIESTOS.PROCESS_FOLDER, { folder_name: folderName })
+  async processFolder(folderName, tipoId = '') {
+    const payload = { folder_name: folderName }
+    if (tipoId) payload.tipo_id = tipoId
+    const response = await api.post(ENDPOINTS.MANIFIESTOS.PROCESS_FOLDER, payload, {
+      timeout: API_CONFIG.LONG_TIMEOUT,
+    })
     return response.data
   },
 
@@ -204,21 +239,22 @@ export const manifiestosService = {
    * @param {string} folderName - Nombre de la carpeta
    * @returns {Promise<void>} Descarga el archivo ZIP
    */
-  async downloadFolderZip(folderName) {
+  async downloadFolderZip(folderName, { onProgress } = {}) {
     const response = await api.get(ENDPOINTS.MANIFIESTOS.DOWNLOAD_FOLDER_ZIP, {
       params: { folder_name: folderName },
-      responseType: 'blob'
+      responseType: 'blob',
+      timeout: API_CONFIG.LONG_TIMEOUT,
+      onDownloadProgress: (event) => {
+        if (!event.total) return
+        onProgress?.({
+          loaded: event.loaded,
+          total: event.total,
+          percent: Math.round((event.loaded / event.total) * 100),
+        })
+      },
     })
-    
-    // Crear un enlace temporal para descargar el archivo
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `${folderName}.zip`)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+    await rejectIfJsonBlob(response)
+    triggerBrowserDownload(response.data, `${folderName}.zip`, 'application/zip')
   },
 
   /**
@@ -226,21 +262,22 @@ export const manifiestosService = {
    * @param {string} folderName - Nombre de la carpeta
    * @returns {Promise<void>} Descarga el archivo Excel
    */
-  async downloadExcel(folderName) {
+  async downloadExcel(folderName, { onProgress } = {}) {
     const response = await api.get(ENDPOINTS.MANIFIESTOS.DOWNLOAD_EXCEL, {
       params: { folder_name: folderName },
-      responseType: 'blob'
+      responseType: 'blob',
+      timeout: API_CONFIG.LONG_TIMEOUT,
+      onDownloadProgress: (event) => {
+        if (!event.total) return
+        onProgress?.({
+          loaded: event.loaded,
+          total: event.total,
+          percent: Math.round((event.loaded / event.total) * 100),
+        })
+      },
     })
-    
-    // Crear un enlace temporal para descargar el archivo
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `manifiestos_${folderName}.xlsx`)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+    await rejectIfJsonBlob(response)
+    triggerBrowserDownload(response.data, `manifiestos_${folderName}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
   },
 
   /**
@@ -314,6 +351,8 @@ export const manifiestosService = {
     const response = await api.post(ENDPOINTS.MANIFIESTOS.PDF_BULK_RENAME, {
       folder_name: folderName,
       pattern: pattern
+    }, {
+      timeout: API_CONFIG.LONG_TIMEOUT,
     })
     return response.data
   },
@@ -353,7 +392,24 @@ export const manifiestosService = {
     const response = await api.delete(ENDPOINTS.MANIFIESTOS.FOLDER_DELETE(folderName), {
       params: {
         type: folderType
-      }
+      },
+      timeout: API_CONFIG.LONG_TIMEOUT,
+    })
+    return response.data
+  },
+
+  async purgeAllFolders() {
+    const response = await api.post(
+      ENDPOINTS.MANIFIESTOS.FOLDERS_PURGE_ALL,
+      { confirm: 'ELIMINAR TODO' },
+      { timeout: API_CONFIG.LONG_TIMEOUT },
+    )
+    return response.data
+  },
+
+  async resolveDuplicate(payload) {
+    const response = await api.post(ENDPOINTS.MANIFIESTOS.DUPLICATES_RESOLVE, payload, {
+      timeout: API_CONFIG.LONG_TIMEOUT,
     })
     return response.data
   },
